@@ -1,0 +1,21 @@
+{
+  "name": "ceo_by_coding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.1",
+    "@upstash/redis": "^1.38.0",
+    "js-interpreter": "^6.0.1",
+    "monaco-editor": "^0.55.1",
+    "phaser": "^4.1.0"
+  }
+}

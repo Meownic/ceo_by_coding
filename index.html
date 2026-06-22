@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Code-Driven Automation Pixel RPG - Program drones with JavaScript to automate your farm!" />
+  <title>DroneHarvest — Code Your Farm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #0a0a1a;
+      overflow: hidden;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* ── Game Canvas Container ── */
+    #game-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+      position: relative;
+      min-width: 0;
+    }
+
+    #game-container canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 2px solid #16213e;
+      border-radius: 8px;
+      box-shadow: 0 0 30px rgba(15, 52, 96, 0.5), 0 0 60px rgba(233, 69, 96, 0.1);
+    }
+
+    /* ── Code Editor Panel (Right Side) ── */
+    #editor-panel {
+      width: 25%;
+      min-width: 320px;
+      background: #1a1a2e;
+      border-left: 2px solid #16213e;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 100;
+      transition: width 0.3s ease;
+    }
+
+    #editor-panel.collapsed {
+      width: 0;
+      min-width: 0;
+      overflow: hidden;
+      border-left: none;
+    }
+
+    /* Editor Header */
+    #editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      user-select: none;
+    }
+
+    #editor-header h3 {
+      color: #e94560;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    /* Script Tabs */
+    #script-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 6px 8px;
+      background: #12122a;
+      border-bottom: 1px solid #16213e;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #0f3460 transparent;
+    }
+
+    .script-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #1a1a2e;
+      border: 1px solid #16213e;
+      border-radius: 4px;
+      color: #aaa;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .script-tab:hover {
+      background: #0f3460;
+      color: #fff;
+    }
+
+    .script-tab.active {
+      background: #0f3460;
+      color: #fff;
+      border-color: #e94560;
+    }
+
+    .script-tab .color-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    #btn-new-script {
+      padding: 4px 10px;
+      background: transparent;
+      border: 1px dashed #0f3460;
+      border-radius: 4px;
+      color: #0f3460;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    #btn-new-script:hover {
+      border-color: #e94560;
+      color: #e94560;
+    }
+
+    /* Monaco Editor Container */
+    #monaco-container {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Editor Controls */
+    #editor-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .editor-btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #btn-run {
+      background: #00ff88;
+      color: #0a0a1a;
+    }
+
+    #btn-run:hover {
+      background: #00cc6a;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+    }
+
+    #btn-run:active {
+      transform: scale(0.96);
+    }
+
+    #btn-run.running {
+      background: #ff4444;
+      color: #fff;
+    }
+
+    #btn-stop {
+      background: #e94560;
+      color: #fff;
+    }
+
+    #btn-stop:hover {
+      background: #c73a52;
+      box-shadow: 0 0 12px rgba(233, 69, 96, 0.4);
+    }
+
+    .editor-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #execution-status {
+      margin-left: auto;
+      color: #aaa;
+      font-size: 10px;
+    }
+
+    /* Console Output */
+    #console-panel {
+      height: 140px;
+      min-height: 80px;
+      background: #0d0d1a;
+      border-top: 1px solid #16213e;
+      overflow-y: auto;
+      padding: 8px;
+      font-size: 11px;
+      scrollbar-width: thin;
+      scrollbar-color: #0f3460 transparent;
+    }
+
+    #console-panel .console-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid #16213e;
+    }
+
+    #console-panel .console-header span {
+      color: #666;
+      font-size: 9px;
+      font-family: 'Press Start 2P', monospace;
+      letter-spacing: 1px;
+    }
+
+    #btn-clear-console {
+      background: transparent;
+      border: 1px solid #333;
+      color: #666;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #btn-clear-console:hover {
+      border-color: #e94560;
+      color: #e94560;
+    }
+
+    #console-output {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .console-line {
+      padding: 2px 0;
+      color: #aaa;
+      word-break: break-all;
+    }
+
+    .console-line.log {
+      color: #00ff88;
+    }
+
+    .console-line.error {
+      color: #ff4444;
+    }
+
+    .console-line.info {
+      color: #4fc3f7;
+    }
+
+    .console-line.warn {
+      color: #ffd700;
+    }
+
+    /* Toggle Editor Button */
+    #btn-toggle-editor {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      z-index: 200;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      color: #e94560;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    #btn-toggle-editor:hover {
+      background: #0f3460;
+      box-shadow: 0 0 12px rgba(233, 69, 96, 0.3);
+    }
+
+    /* Loading Screen */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    #loading-screen h1 {
+      font-family: 'Press Start 2P', monospace;
+      color: #e94560;
+      font-size: 24px;
+      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+    }
+
+    #loading-screen .subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      color: #0f3460;
+      font-size: 12px;
+      margin-bottom: 40px;
+    }
+
+    .loading-bar-container {
+      width: 300px;
+      height: 8px;
+      background: #16213e;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #e94560, #00ff88);
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    #loading-text {
+      margin-top: 12px;
+      color: #666;
+      font-size: 10px;
+    }
+
+    /* ── Tab Selector ── */
+    #panel-tabs {
+      display: flex;
+      background: #111122;
+      border-bottom: 2px solid #1a1a3a;
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: #778;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-bottom: 3px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .panel-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .panel-tab.active {
+      color: #ff0055;
+      border-bottom-color: #ff0055;
+      background: rgba(255, 0, 85, 0.08);
+      text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+    }
+
+    /* Tab Views */
+    .tab-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    #tab-view-editor {
+      display: flex; /* Active by default */
+    }
+
+    /* Profile Tab Styling */
+    #tab-view-profile, #tab-view-guide {
+      padding: 20px;
+      background: #080814;
+      scrollbar-width: thin;
+      scrollbar-color: #1a1a3a transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Glassmorphic Cards */
+    .profile-card {
+      background: rgba(18, 18, 36, 0.7);
+      border: 1px solid rgba(255, 0, 85, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .profile-card:hover {
+      border-color: rgba(255, 0, 85, 0.4);
+      box-shadow: 0 8px 32px 0 rgba(255, 0, 85, 0.1);
+    }
+
+    .profile-name-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .profile-name-input {
+      flex: 1;
+      background: rgba(10, 10, 20, 0.6);
+      border: 1px solid #1a1a3a;
+      border-radius: 6px;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .profile-name-input:focus {
+      border-color: #00ffcc;
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+      background: rgba(10, 10, 20, 0.8);
+    }
+
+    .btn-profile-save {
+      background: #ff0055;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.2);
+    }
+
+    .btn-profile-save:hover {
+      background: #ff2277;
+      box-shadow: 0 0 16px rgba(255, 0, 85, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .profile-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #e2e8f0;
+    }
+
+    .stat-coins {
+      color: #ffd700;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+    }
+
+    .xp-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .xp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .xp-bar-outer {
+      height: 10px;
+      background: #111122;
+      border: 1px solid #1a1a3a;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .xp-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg, #ff0055, #ffd700);
+      width: 0%;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+    }
+
+    /* Upgrades Section */
+    .section-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #ff0055;
+      letter-spacing: 1px;
+      margin-top: 12px;
+      border-left: 3px solid #ff0055;
+      padding-left: 10px;
+      text-shadow: 0 0 8px rgba(255, 0, 85, 0.2);
+    }
+
+    .upgrades-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .upgrade-card {
+      background: rgba(18, 18, 36, 0.5);
+      border: 1px solid rgba(0, 255, 204, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+    }
+
+    .upgrade-card:hover {
+      border-color: rgba(0, 255, 204, 0.35);
+      background: rgba(18, 18, 36, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 255, 204, 0.05);
+    }
+
+    .upgrade-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .upgrade-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+    }
+
+    .upgrade-desc {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .upgrade-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .upgrade-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #111122;
+      border: 1px solid #1a1a3a;
+      transition: all 0.3s ease;
+    }
+
+    .upgrade-dot.active {
+      background: #00ffcc;
+      border-color: #00ffcc;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.8), 0 0 16px rgba(0, 255, 204, 0.3);
+    }
+
+    .btn-upgrade {
+      background: #00ffcc;
+      color: #050510;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.2);
+      white-space: nowrap;
+    }
+
+    .btn-upgrade:hover:not(:disabled) {
+      background: #33ffdd;
+      box-shadow: 0 0 16px rgba(0, 255, 204, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-upgrade:disabled {
+      background: rgba(22, 33, 62, 0.3);
+      color: #556;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* Backpack Grid — compact 1-tile icon size */
+    .backpack-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .backpack-item {
+      background: rgba(18, 18, 36, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      gap: 4px;
+      transition: all 0.3s ease;
+      text-align: center;
+      min-height: 80px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .backpack-item.dragging {
+      opacity: 0.4;
+      border: 1px dashed #00ffcc;
+      transform: scale(0.95);
+      cursor: grabbing;
+    }
+
+    .backpack-item:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(18, 18, 36, 0.7);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .item-emoji {
+      font-size: 20px;
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+    }
+
+    .item-details {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .item-name {
+      font-size: 8px;
+      font-weight: 600;
+      color: #fff;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .item-qty {
+      font-size: 9px;
+      color: #00ffcc;
+      margin-top: 1px;
+      font-weight: 600;
+    }
+
+    .item-actions {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 3px;
+    }
+
+    .btn-sell {
+      width: 100%;
+      background: transparent;
+      border: 1px solid #00ffcc;
+      color: #00ffcc;
+      border-radius: 4px;
+      padding: 3px 2px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .btn-sell:hover:not(:disabled) {
+      background: #00ffcc;
+      color: #050510;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
+    }
+
+    .btn-sell:disabled {
+      border-color: rgba(255, 255, 255, 0.05);
+      color: #445;
+      cursor: not-allowed;
+    }
+
+    /* Device cards */
+    .device-card {
+      background: rgba(18, 18, 36, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s ease;
+    }
+
+    .device-card:hover {
+      border-color: rgba(0, 255, 204, 0.2);
+    }
+
+    .device-card-active {
+      border-color: rgba(0, 255, 204, 0.4);
+      box-shadow: 0 0 20px rgba(0, 255, 204, 0.06);
+    }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .device-id-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .device-led {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .device-id {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: #fff;
+    }
+
+    .device-active-badge {
+      background: rgba(0, 255, 204, 0.15);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      color: #00ffcc;
+      font-size: 8px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .device-status {
+      font-size: 9px;
+      font-weight: 600;
+    }
+
+    .device-info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .device-module {
+      color: #94a3b8;
+    }
+
+    .device-inv {
+      color: #ffd700;
+      font-weight: 600;
+    }
+
+    .device-inv-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-height: 18px;
+    }
+
+    .device-inv-item {
+      background: rgba(0, 255, 204, 0.08);
+      border: 1px solid rgba(0, 255, 204, 0.15);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 9px;
+      color: #00ffcc;
+    }
+
+    .device-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-device-edit, .btn-device-equip, .btn-device-transfer {
+      flex: 1;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 6px 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: center;
+    }
+
+    .btn-device-edit:hover {
+      border-color: #ff0055;
+      color: #ff0055;
+      background: rgba(255, 0, 85, 0.05);
+    }
+
+    .btn-device-equip:hover {
+      border-color: #00ffcc;
+      color: #00ffcc;
+      background: rgba(0, 255, 204, 0.05);
+    }
+
+    .btn-device-transfer:hover {
+      border-color: #ffd700;
+      color: #ffd700;
+      background: rgba(255, 215, 0, 0.05);
+    }
+
+    /* Academy Tab Styling */
+    .guide-section {
+      background: rgba(18, 18, 36, 0.6);
+      border: 1px solid rgba(255, 0, 85, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      font-size: 12px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .guide-section h4 {
+      color: #ff0055;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 0, 85, 0.2);
+      padding-bottom: 6px;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(255, 0, 85, 0.2);
+    }
+
+    .guide-section p {
+      margin-bottom: 10px;
+    }
+
+    .guide-section ol, .guide-section ul {
+      margin-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    .guide-section li {
+      margin-bottom: 6px;
+    }
+
+    .api-card {
+      background: rgba(18, 18, 36, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .api-card:hover {
+      border-color: rgba(0, 255, 204, 0.3);
+      background: rgba(18, 18, 36, 0.7);
+      transform: translateX(2px);
+    }
+
+    .api-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .api-signature {
+      font-weight: 700;
+      color: #00ffcc;
+      font-size: 12px;
+      text-shadow: 0 0 6px rgba(0, 255, 204, 0.2);
+    }
+
+    .api-desc {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .api-code-block {
+      background: rgba(10, 10, 20, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #ff0055;
+      font-family: 'JetBrains Mono', monospace;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-copy {
+      background: #111122;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94a3b8;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+      background: #ff0055;
+      border-color: #ff0055;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
+    }
+
+    .btn-copy.copied {
+      background: #00ffcc;
+      border-color: #00ffcc;
+      color: #050510;
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      #editor-panel {
+        width: 380px;
+        min-width: 320px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+      #editor-panel {
+        width: 100%;
+        min-width: 100%;
+        height: 40vh;
+        border-left: none;
+        border-top: 2px solid #16213e;
+      }
+    }
+
+    /* Drag & Drop Script Cards Styles */
+    .script-card-item:hover {
+      border-color: rgba(255, 255, 255, 0.4) !important;
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+    .script-card-item.dragging {
+      opacity: 0.4;
+      border-style: dashed !important;
+      cursor: grabbing !important;
+    }
+    .script-card-rename-input:focus {
+      border-bottom: 1px dashed #ff0055 !important;
+      color: #ff0055 !important;
+    }
+    .drone-card-drop-zone.dragover {
+      border-color: #00ffcc !important;
+      background: rgba(0, 255, 204, 0.08) !important;
+      color: #00ffcc !important;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.15);
+    }
+    .btn-card-unassign:hover {
+      text-shadow: 0 0 6px #ff4444;
+      transform: scale(1.05);
+    }
+
+    /* ── Smartphone Chat Overlay ── */
+    #smartphone-chat {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      height: 420px;
+      background: #0d0d1a;
+      border: 2px solid #ff0055;
+      border-radius: 18px;
+      padding: 12px;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 0, 85, 0.35);
+      z-index: 999;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      transform: translateY(120%);
+      opacity: 0;
+    }
+    #smartphone-chat.active {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    .smartphone-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid #16213e;
+      padding-bottom: 8px;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    .smartphone-status-dot {
+      width: 8px;
+      height: 8px;
+      background: #00ffcc;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #00ffcc;
+    }
+    .smartphone-title {
+      color: #ff0055;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+    }
+    .smartphone-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scrollbar-width: thin;
+      scrollbar-color: #ff0055 transparent;
+    }
+    .chat-bubble {
+      max-width: 85%;
+      padding: 8px 12px;
+      font-size: 10.5px;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .chat-bubble.eli {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px 12px 12px 0px;
+      color: #e2e8f0;
+      align-self: flex-start;
+    }
+    .chat-bubble.player {
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      border-radius: 12px 12px 0px 12px;
+      color: #ffffff;
+      align-self: flex-end;
+    }
+    .smartphone-footer {
+      border-top: 1px solid #16213e;
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .smartphone-btn {
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid #ff0055;
+      color: #ff0055;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+    }
+    .smartphone-btn:hover {
+      background: rgba(255, 0, 85, 0.2);
+      box-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
+    }
+    .smartphone-btn-claim {
+      background: #00ffcc;
+      border: none;
+      color: #050510;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+      transition: all 0.2s ease;
+    }
+    .smartphone-btn-claim:hover {
+      background: #33ffdd;
+      transform: scale(1.02);
+    }
+
+    /* ── Visual Grid Inventory Slots ── */
+    .inventory-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .inventory-slot {
+      aspect-ratio: 1;
+      background: rgba(10, 10, 20, 0.85);
+      border: 2px solid #16213e;
+      border-radius: 8px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .inventory-slot:hover {
+      border-color: #ff0055;
+      background: rgba(255, 0, 85, 0.08);
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.15);
+    }
+    .inventory-slot.selected {
+      border-color: #00ffcc;
+      background: rgba(0, 255, 204, 0.08);
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.25);
+    }
+    .inventory-slot.dragging {
+      opacity: 0.4;
+      border-style: dashed;
+    }
+    .inventory-slot-emoji {
+      font-size: 26px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    .inventory-slot-qty {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 9px;
+      font-weight: bold;
+      color: #00ffcc;
+      font-family: 'JetBrains Mono', monospace;
+      text-shadow: 1px 1px 1px #000, -1px -1px 1px #000;
+    }
+    
+    /* Compact slots for Drones inventory */
+    .drone-inventory-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .drone-inventory-slot {
+      width: 34px;
+      height: 34px;
+      background: rgba(10, 10, 20, 0.7);
+      border: 1px solid rgba(0, 255, 204, 0.25);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .drone-inventory-slot-emoji {
+      font-size: 18px;
+    }
+    .drone-inventory-slot-qty {
+      position: absolute;
+      bottom: 1px;
+      right: 2px;
+      font-size: 8px;
+      font-weight: bold;
+      text-shadow: 1px 1px 0px #000;
+    }
+
+    /* Guide Category Styling */
+    .guide-category-header {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: #00ffcc;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid rgba(0, 255, 204, 0.25);
+      padding-bottom: 8px;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .guide-code-desc {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    /* Floating Tooltip */
+    #inventory-tooltip {
+      position: absolute;
+      z-index: 2200;
+      background: #0d0d1a;
+      border: 2px solid #ff0055;
+      border-radius: 12px;
+      padding: 10px;
+      width: 220px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8), 0 0 15px rgba(255, 0, 85, 0.25);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #e2e8f0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+
+    /* Production Dashboard */
+    #production-dashboard {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 950;
+      background: rgba(13, 13, 26, 0.85);
+      border: 1px solid rgba(0, 255, 204, 0.25);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #94a3b8;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 180px;
+    }
+
+    /* Transparent Popup Windows */
+    #backpack-popup, #warehouse-popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: rgba(13, 13, 26, 0.96);
+      border-radius: 20px;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 255, 204, 0.15);
+      z-index: 1050;
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      backdrop-filter: blur(12px);
+    }
+    #backpack-popup.active, #warehouse-popup.active {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #backpack-popup {
+      width: 420px;
+      height: 480px;
+      border: 3px solid #00ffcc;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 255, 204, 0.15);
+    }
+    #warehouse-popup {
+      width: 460px;
+      height: 520px;
+      border: 3px solid #ff0055;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 0, 85, 0.15);
+    }
+
+    .inventory-slot.empty-placeholder {
+      border: 2px dashed rgba(255, 255, 255, 0.08) !important;
+      background: rgba(0, 0, 0, 0.2) !important;
+      cursor: default !important;
+    }
+    .inventory-slot.empty-placeholder:hover {
+      box-shadow: none !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      background: rgba(0, 0, 0, 0.2) !important;
+    }
+
+    /* Smartphone overlay custom adjustment */
+    #smartphone-chat {
+      position: absolute;
+      bottom: 20px;
+      right: calc(25% + 20px) !important;
+      width: 320px;
+      height: 500px !important;
+      background: #0d0d1a;
+      border: 3px solid #ff0055 !important;
+      border-radius: 24px;
+      padding: 16px;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 0, 85, 0.35);
+      z-index: 1000;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      transform: translateY(150%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #smartphone-chat.active {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <h1>DroneHarvest</h1>
+    <div class="subtitle">// code your farm_</div>
+    <div class="loading-bar-container">
+      <div class="loading-bar" id="loading-bar"></div>
+    </div>
+    <div id="loading-text">Initializing...</div>
+  </div>
+
+  <!-- Game Canvas -->
+  <div id="game-container">
+    <button id="btn-toggle-editor">[ CODE ]</button>
+  </div>
+
+  <!-- Code Editor Panel -->
+  <div id="editor-panel">
+    <div id="editor-header">
+      <h3>🤖 DRONE CODE</h3>
+      <span style="color: #666; font-size: 10px;">Tab to toggle</span>
+    </div>
+
+    <!-- Panel Tabs selector -->
+    <div id="panel-tabs">
+      <button class="panel-tab active" data-tab="editor">💻 Editor</button>
+      <button class="panel-tab" data-tab="profile">🧑‍🚀 Profile</button>
+      <button class="panel-tab" data-tab="guide">📖 Academy</button>
+      <button class="panel-tab" data-tab="devices">🤖 Devices</button>
+    </div>
+
+    <!-- View 1: Monaco Editor View -->
+    <div id="tab-view-editor" class="tab-view">
+      <!-- Script Tabs -->
+      <div id="script-tabs">
+        <button id="btn-new-script">+ New</button>
+      </div>
+
+      <!-- Monaco Editor -->
+      <div id="monaco-container"></div>
+
+      <!-- Editor Controls -->
+      <div id="editor-controls">
+        <button class="editor-btn" id="btn-run">▶ RUN</button>
+        <button class="editor-btn" id="btn-stop" disabled>■ STOP</button>
+        <span id="execution-status">Ready</span>
+      </div>
+
+      <!-- Console -->
+      <div id="console-panel">
+        <div class="console-header">
+          <span>CONSOLE</span>
+          <button id="btn-clear-console">Clear</button>
+        </div>
+        <div id="console-output"></div>
+      </div>
+    </div>
+
+    <!-- View 2: Profile & Backpack View -->
+    <div id="tab-view-profile" class="tab-view" style="display: none;">
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <div class="profile-name-row">
+          <input type="text" id="profile-name-input" class="profile-name-input" placeholder="Pilot Name" value="Pilot Alpha">
+          <button id="btn-profile-save" class="btn-profile-save">Save</button>
+        </div>
+        <div class="profile-stats">
+          <div id="profile-level" style="font-family: 'Press Start 2P', monospace; font-size: 10px; color: #ff0055;">LVL 1</div>
+          <div id="profile-wallet" class="stat-coins">🪙 100</div>
+        </div>
+        <div class="xp-section">
+          <div class="xp-label">
+            <span>EXPERIENCE (XP)</span>
+            <span id="xp-text">0 / 100</span>
+          </div>
+          <div class="xp-bar-outer">
+            <div id="xp-bar-inner" class="xp-bar-inner" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Drone Specs -->
+        <div class="profile-drone-specs" style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 4px;">
+          <div style="font-size: 8px; color: #888; font-family: 'Press Start 2P', monospace; margin-bottom: 4px; letter-spacing: 0.5px;">⚡ DRONE HARDWARE</div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+            <span>Move Speed:</span>
+            <span id="spec-speed" style="color: #00ffcc; font-weight: 600;">200ms</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+            <span>Action Cooldown:</span>
+            <span id="spec-action" style="color: #00ffcc; font-weight: 600;">300ms</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+            <span>Battery Limit:</span>
+            <span id="spec-battery" style="color: #00ffcc; font-weight: 600;">10,000 steps</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrades Section -->
+      <div class="section-title">DRONE UPGRADES</div>
+      <div class="upgrades-container">
+        <!-- Upgrade Card 1: Speed -->
+        <div class="upgrade-card" id="upgrade-card-speed">
+          <div class="upgrade-info">
+            <div>
+              <div class="upgrade-name">Movement Speed</div>
+              <div class="upgrade-desc">Reduces transit time between tiles.</div>
+            </div>
+            <button class="btn-upgrade" id="btn-upgrade-speed" data-upgrade="speed">Upgrade: 100g</button>
+          </div>
+          <div class="upgrade-dots" id="upgrade-dots-speed">
+            <div class="upgrade-dot active"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+          </div>
+        </div>
+
+        <!-- Upgrade Card 2: Action Cooldown -->
+        <div class="upgrade-card" id="upgrade-card-action">
+          <div class="upgrade-info">
+            <div>
+              <div class="upgrade-name">Action Cooldown</div>
+              <div class="upgrade-desc">Speeds up tilling, watering, planting, and harvesting.</div>
+            </div>
+            <button class="btn-upgrade" id="btn-upgrade-action" data-upgrade="action">Upgrade: 100g</button>
+          </div>
+          <div class="upgrade-dots" id="upgrade-dots-action">
+            <div class="upgrade-dot active"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+          </div>
+        </div>
+
+        <!-- Upgrade Card 3: Execution Steps (Battery) -->
+        <div class="upgrade-card" id="upgrade-card-battery">
+          <div class="upgrade-info">
+            <div>
+              <div class="upgrade-name">Execution Steps (Battery)</div>
+              <div class="upgrade-desc">Increases the step limit allowed per execution.</div>
+            </div>
+            <button class="btn-upgrade" id="btn-upgrade-battery" data-upgrade="battery">Upgrade: 100g</button>
+          </div>
+          <div class="upgrade-dots" id="upgrade-dots-battery">
+            <div class="upgrade-dot active"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+            <div class="upgrade-dot"></div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Cloud Sync Section -->
+      <div class="section-title">CLOUD SYNC & BACKUP</div>
+      <!-- Cloud Sync Card -->
+      <div class="profile-card" id="cloud-sync-card">
+        <!-- Not Configured View -->
+        <div id="sync-env-warning" style="display: none; font-size: 11px; color: #ff5555; line-height: 1.4;">
+          ⚠️ Cloud environment variables not configured. Real-time local play is active without internet.
+        </div>
+
+        <!-- Logged Out View -->
+        <div id="sync-logged-out" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 11px; color: #aaa;">Sync your farm progression & scripts online.</div>
+          <input type="text" id="auth-email-username" class="profile-name-input" placeholder="Username or Email" style="width: 100%;">
+          <input type="password" id="auth-password" class="profile-name-input" placeholder="Password" style="width: 100%;">
+          
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <button id="btn-login" class="btn-profile-save" style="flex: 1;">Login</button>
+            <button id="btn-signup" class="btn-profile-save" style="flex: 1; background: transparent; border: 1px solid #ff0055; color: #ff0055;">Sign Up</button>
+          </div>
+          <button id="btn-login-google" class="btn-profile-save" style="width: 100%; background: #4285F4; border: none; margin-top: 4px; color: white;">Login with Google</button>
+        </div>
+
+        <!-- Logged In View -->
+        <div id="sync-logged-in" style="display: none; flex-direction: column; gap: 10px;">
+          <div style="font-size: 11px; color: #aaa;">Logged in as: <span id="sync-user-email" style="color: #00ffcc; font-weight: 600;">-</span></div>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-cloud-backup" class="btn-profile-save" style="flex: 1; background: #00ffcc; color: #050510;">☁️ Backup</button>
+            <button id="btn-cloud-restore" class="btn-profile-save" style="flex: 1; background: #ffd700; color: #050510;">📥 Restore</button>
+          </div>
+          <button id="btn-logout" class="btn-profile-save" style="width: 100%; background: transparent; border: 1px solid #ff4444; color: #ff4444;">Logout</button>
+        </div>
+
+        <!-- Always-visible local save controls -->
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
+          <div style="font-size: 10px; color: #555; margin-bottom: 6px;">LOCAL SAVE</div>
+          <button id="btn-reset-save" class="btn-profile-save" style="width: 100%; background: transparent; border: 1px solid #ff4444; color: #ff6666; font-size: 10px;">🗑️ Reset Local Save (Start Fresh)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 4: Devices & Drone Management -->
+    <div id="tab-view-devices" class="tab-view" style="display: none;">
+      <div style="padding: 16px 16px 0;">
+        <div class="section-title">DRONE DEVICES</div>
+        <div style="font-size: 10px; color: #556; margin-top: 4px; margin-bottom: 8px;">
+          Equip modules, manage inventory, edit scripts per drone.
+        </div>
+      </div>
+      <div id="devices-list" style="padding: 0 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Rendered dynamically by EditorBridge -->
+      </div>
+    </div>
+
+    <!-- View 3: Academy & API View -->
+    <div id="tab-view-guide" class="tab-view" style="display: none; padding: 16px; gap: 16px; background: #080814;">
+      
+      <!-- Tutorial Part 1: Farming Basics & Logic Loops -->
+      <div class="guide-section">
+        <h4>🌾 1. BASIC FARMING AUTOMATION</h4>
+        <p>Equip a <strong>Farming Module</strong> 🌾 on your drone to till, water, plant, crop, or harvest plants. Use loops to automate simple agriculture tasks.</p>
+        
+        <div style="margin: 8px 0; font-size: 10px; color: #ff0055;">💻 FARMING SNIPPET: Loop farm a row of wheat</div>
+        <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
+          <pre style="margin: 0; font-family: inherit; font-size: 10px; line-height: 1.4; color: #ff0055; white-space: pre-wrap;">// Till, water, and plant a row of 5 wheat seeds
+for (var i = 0; i &lt; 5; i++) {
+  drone.till();
+  drone.water();
+  drone.plant('wheat');
+  drone.move('right');
+}</pre>
+          <button class="btn-copy" data-snippet="for (var i = 0; i < 5; i++) {\n  drone.till();\n  drone.water();\n  drone.plant('wheat');\n  drone.move('right');\n}" style="align-self: flex-end; margin-top: 4px;">Copy Snippet</button>
+        </div>
+      </div>
+
+      <!-- Tutorial Part 2: Cave Mining & Ore Drilling -->
+      <div class="guide-section">
+        <h4>🪨 2. CAVE MINING & ORE DRILLING</h4>
+        <p>Unlock the <strong>Mining Key</strong> at the Shop and interact with the Cave Gate to unlock Zone 3. Equip a <strong>Mining Module</strong> ⛏️ on your drone to mine ore veins (Coal, Copper, Iron, Gold) at the lower cavern area (X: 0-39, Y: 20-39). A mining drone has a 2.5x Drill Modifier that boosts rare ore drop weights!</p>
+        <p>Use <code>drone.checkNode()</code> to scan the geology underneath, and <code>drone.mine()</code> to extract the ore block. Ore veins are located at specific sites: Coal (5,25), Copper (15,30), Iron (25,32), Gold (35,35).</p>
+        
+        <div style="margin: 8px 0; font-size: 10px; color: #ff0055;">💻 MINING SNIPPET: Scan and mine node until empty or full</div>
+        <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
+          <pre style="margin: 0; font-family: inherit; font-size: 10px; line-height: 1.4; color: #ff0055; white-space: pre-wrap;">// Scan the geology, drill until depleted or full
+var ore = drone.checkNode();
+if (ore !== 'none' && ore !== 'depleted') {
+  while (!drone.isInventoryFull() && drone.checkNode() === ore) {
+    drone.mine();
+    drone.wait(0.5); // small action delay
+  }
+  drone.say("Done mining! Count: " + drone.getInventoryCount());
+}</pre>
+          <button class="btn-copy" data-snippet="var ore = drone.checkNode();\nif (ore !== 'none' && ore !== 'depleted') {\n  while (!drone.isInventoryFull() && drone.checkNode() === ore) {\n    drone.mine();\n    drone.wait(0.5);\n  }\n  drone.say(&quot;Done mining! Count: &quot; + drone.getInventoryCount());\n}" style="align-self: flex-end; margin-top: 4px;">Copy Snippet</button>
+        </div>
+      </div>
+
+      <!-- Tutorial Part 3: Supplier & Drone Logistics -->
+      <div class="guide-section">
+        <h4>📦 3. SUPPLIER DRONES & LOGISTICS</h4>
+        <p>Equip a <strong>Supplier Module</strong> 📦 to transfer items between adjacent drones or automate refineries. Use <code>drone.supplyFrom(otherDroneId)</code> to pull items from an adjacent drone. Use <code>drone.checkFrontItem()</code> and <code>drone.pushItem(direction)</code> to manage sorting gates or conveyors.</p>
+        
+        <div style="margin: 8px 0; font-size: 10px; color: #ff0055;">💻 LOGISTICS SNIPPET: Sorter gate logic router</div>
+        <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
+          <pre style="margin: 0; font-family: inherit; font-size: 10px; line-height: 1.4; color: #ff0055; white-space: pre-wrap;">// Route coal/iron to smelter (right) and others to warehouse (left)
+while (drone.hasPower()) {
+  var cargo = drone.checkFrontItem();
+  if (cargo === 'iron_ore' || cargo === 'coal') {
+    drone.pushItem('right');
+  } else if (cargo !== 'none') {
+    drone.pushItem('left');
+  } else {
+    drone.wait(1.0);
+  }
+}</pre>
+          <button class="btn-copy" data-snippet="while (drone.hasPower()) {\n  var cargo = drone.checkFrontItem();\n  if (cargo === 'iron_ore' || cargo === 'coal') {\n    drone.pushItem('right');\n  } else if (cargo !== 'none') {\n    drone.pushItem('left');\n  } else {\n    drone.wait(1.0);\n  }\n}" style="align-self: flex-end; margin-top: 4px;">Copy Snippet</button>
+        </div>
+      </div>
+
+      <!-- Tutorial Part 4: Seller Drones & NPC Orders -->
+      <div class="guide-section">
+        <h4>💰 4. SELLER DRONES & NPC BUYERS</h4>
+        <p>Equip a <strong>Seller Module</strong> 💰 to buy seeds or sell inventory items autonomously using <code>drone.buy(crop, count)</code> and <code>drone.sell()</code>. You can also deliver orders to Special NPC Buyers who arrive at the dock (adjacent to X:17, Y:3) for <strong>2.0x value</strong> rewards!</p>
+        
+        <div style="margin: 8px 0; font-size: 10px; color: #ff0055;">💻 SELLING SNIPPET: Fulfill special guest NPC orders</div>
+        <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
+          <pre style="margin: 0; font-family: inherit; font-size: 10px; line-height: 1.4; color: #ff0055; white-space: pre-wrap;">// Deliver requested crop to special guest NPC
+if (drone.hasSpecialBuyer()) {
+  var order = drone.getSpecialBuyerRequest();
+  if (drone.hasDroneItem(order.reqItem, order.reqCount)) {
+    drone.say("Delivering order to guest!");
+    drone.deliverToSpecialBuyer();
+  }
+}</pre>
+          <button class="btn-copy" data-snippet="if (drone.hasSpecialBuyer()) {\n  var order = drone.getSpecialBuyerRequest();\n  if (drone.hasDroneItem(order.reqItem, order.reqCount)) {\n    drone.say(&quot;Delivering order to guest!&quot;);\n    drone.deliverToSpecialBuyer();\n  }\n}" style="align-self: flex-end; margin-top: 4px;">Copy Snippet</button>
+        </div>
+      </div>
+
+      <!-- Tutorial Part 5: Global State & Shared Memory -->
+      <div class="guide-section">
+        <h4>📡 5. GLOBAL STATE & SHARED MEMORY (MEMSET STATE)</h4>
+        <p>Coordinate multiple drones using the global shared memory object <code>mem</code>. Use <code>mem.set(key, value)</code> and <code>mem.get(key, defaultValue)</code> to read/write state flags or share coordinates across different drone script playgrounds.</p>
+        
+        <div style="margin: 8px 0; font-size: 10px; color: #ff0055;">💻 MEMSET STATE SNIPPET: Coordinate miners and transporters</div>
+        <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
+          <pre style="margin: 0; font-family: inherit; font-size: 10px; line-height: 1.4; color: #ff0055; white-space: pre-wrap;">// Drone 1 (Miner): Set flag when full of iron
+if (drone.isInventoryFull()) {
+  mem.set('iron_ready', true);
+}
+
+// Drone 2 (Transporter): Read flag, go collect, then clear flag
+var needsTransport = mem.get('iron_ready', false);
+if (needsTransport) {
+  drone.say("Moving to transport iron!");
+  mem.set('iron_ready', false); // clear flag
+}</pre>
+          <button class="btn-copy" data-snippet="if (drone.isInventoryFull()) {\n  mem.set('iron_ready', true);\n}\n\n// In another script:\nvar needsTransport = mem.get('iron_ready', false);\nif (needsTransport) {\n  drone.say(&quot;Moving to transport iron!&quot;);\n  mem.set('iron_ready', false);\n}" style="align-self: flex-end; margin-top: 4px;">Copy Snippet</button>
+        </div>
+      </div>
+
+      <!-- Tutorial Part 6: Centralized Warehouse System -->
+      <div class="guide-section">
+        <h4>🧱 6. CENTRALIZED WAREHOUSE SYSTEM</h4>
+        <p>The centralized Warehouse (Zone 1, purple base structure at X:10, Y:2) offers infinite storage capacity.</p>
+        <ul>
+          <li><strong>Autonomous Drones</strong>: Drones can deposit items directly into the Warehouse using <code>drone.transferToWarehouse()</code> when standing adjacent to the Warehouse.</li>
+          <li><strong>Manual Warehouse Panel</strong>: Press <code>[E]</code> standing near the Warehouse on the grid to automatically switch to the <strong>Devices</strong> tab in the Code panel. Scroll down to see the <strong>Warehouse Storage Grid</strong> to manually withdraw (Click for 1, Shift-Click for stack) or deposit your backpack inventory.</li>
+        </ul>
+      </div>
+
+      <!-- API Reference -->
+      <div class="section-title">DRONE API REFERENCE</div>
+      <div id="api-reference-list">
+        
+        <div class="guide-category-header">🟢 CATEGORY: NAVIGATION & FARMING</div>
+        
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.move(dir)</span>
+            <button class="btn-copy" data-snippet="drone.move('right');">Copy</button>
+          </div>
+          <div class="api-desc">Moves drone 1 tile: <code>'up'</code>, <code>'down'</code>, <code>'left'</code>, <code>'right'</code>.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.till()</span>
+            <button class="btn-copy" data-snippet="drone.till();">Copy</button>
+          </div>
+          <div class="api-desc">Tills grass soil at drone's tile.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.water()</span>
+            <button class="btn-copy" data-snippet="drone.water();">Copy</button>
+          </div>
+          <div class="api-desc">Waters tilled soil.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.plant(crop)</span>
+            <button class="btn-copy" data-snippet="drone.plant('wheat');">Copy</button>
+          </div>
+          <div class="api-desc">Plants seed (e.g. <code>'wheat'</code>, <code>'potato'</code>, <code>'cactus'</code>, <code>'apple_tree'</code>).</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.crop()</span>
+            <button class="btn-copy" data-snippet="drone.crop();">Copy</button>
+          </div>
+          <div class="api-desc">Harvests mature standard crops (Wheat, Potato) and clears the tile.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.harvest()</span>
+            <button class="btn-copy" data-snippet="drone.harvest();">Copy</button>
+          </div>
+          <div class="api-desc">Picks fruit from trees (Apple, Cactus) without clearing the plant.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.canCrop()</span>
+            <button class="btn-copy" data-snippet="drone.canCrop()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if standard crop under drone is mature.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.canHarvest()</span>
+            <button class="btn-copy" data-snippet="drone.canHarvest()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if fruit tree has ripe fruit.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.isWatered()</span>
+            <button class="btn-copy" data-snippet="drone.isWatered()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if tile is watered.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.isTilled()</span>
+            <button class="btn-copy" data-snippet="drone.isTilled()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if tile is tilled.</div>
+        </div>
+
+        <div class="guide-category-header">🪨 CATEGORY: CAVE MINING</div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.checkNode()</span>
+            <button class="btn-copy" data-snippet="drone.checkNode()">Copy</button>
+          </div>
+          <div class="api-desc">Scans geology underneath: returns <code>'stone'</code>, <code>'iron_vein'</code>, <code>'coal_seam'</code>, <code>'depleted'</code>, or <code>'none'</code>.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.mine()</span>
+            <button class="btn-copy" data-snippet="drone.mine();">Copy</button>
+          </div>
+          <div class="api-desc">Drills ore node. Lowers durability, yields ore block, triggers cooldown.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.isInventoryFull()</span>
+            <button class="btn-copy" data-snippet="drone.isInventoryFull()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if drone inventory count is maxed.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.getBatteryLevel()</span>
+            <button class="btn-copy" data-snippet="drone.getBatteryLevel()">Copy</button>
+          </div>
+          <div class="api-desc">Returns remaining script battery steps.</div>
+        </div>
+
+        <div class="guide-category-header">🏭 CATEGORY: MACHINES & CONVEYOR LOGISTICS</div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.checkFrontItem()</span>
+            <button class="btn-copy" data-snippet="drone.checkFrontItem()">Copy</button>
+          </div>
+          <div class="api-desc">Returns item ID of cargo directly 1 tile in front of the drone on a conveyor belt.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.pushItem(dir)</span>
+            <button class="btn-copy" data-snippet="drone.pushItem('right');">Copy</button>
+          </div>
+          <div class="api-desc">Pushes the item in front of the drone to a matching conveyor direction.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.getMachineState(id)</span>
+            <button class="btn-copy" data-snippet="drone.getMachineState('mill_001')">Copy</button>
+          </div>
+          <div class="api-desc">Returns object state of a refinery machine (inputs list, outputs list, isProcessing status).</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.depositToMachine(id, item, qty)</span>
+            <button class="btn-copy" data-snippet="drone.depositToMachine('smelter_001', 'coal', 1);">Copy</button>
+          </div>
+          <div class="api-desc">Deposits item from drone inventory into machine's input buffer.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.retrieveFromMachine(id)</span>
+            <button class="btn-copy" data-snippet="drone.retrieveFromMachine('smelter_001');">Copy</button>
+          </div>
+          <div class="api-desc">Pulls all outputs inside refinery machine into drone inventory.</div>
+        </div>
+
+        <div class="guide-category-header">📦 CATEGORY: SUPPLIER DRONES & WAREHOUSE</div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.transferToPlayer()</span>
+            <button class="btn-copy" data-snippet="drone.transferToPlayer();">Copy</button>
+          </div>
+          <div class="api-desc">Moves all drone items directly to the player's backpack.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.transferToWarehouse()</span>
+            <button class="btn-copy" data-snippet="drone.transferToWarehouse();">Copy</button>
+          </div>
+          <div class="api-desc">Deposits all drone items into Warehouse storage. Drone must stand adjacent to Warehouse.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.supplyFrom(otherId)</span>
+            <button class="btn-copy" data-snippet="drone.supplyFrom('drone-001');">Copy</button>
+          </div>
+          <div class="api-desc">Pulls all items from an adjacent drone's inventory. Requires **Supplier Module 📦**.</div>
+        </div>
+
+        <div class="guide-category-header">💰 CATEGORY: SELLER DRONES & NPC BUYERS</div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.sell()</span>
+            <button class="btn-copy" data-snippet="drone.sell();">Copy</button>
+          </div>
+          <div class="api-desc">Sells all crops in drone inventory autonomously. Requires **Seller Module 💰**.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.buy(seed, qty)</span>
+            <button class="btn-copy" data-snippet="drone.buy('wheat', 5);">Copy</button>
+          </div>
+          <div class="api-desc">Buys seeds from shop directly into drone. Requires **Seller Module 💰**.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.hasSpecialBuyer()</span>
+            <button class="btn-copy" data-snippet="drone.hasSpecialBuyer()">Copy</button>
+          </div>
+          <div class="api-desc">Returns <code>true</code> if a special guest buyer NPC is active at the market.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.deliverToSpecialBuyer()</span>
+            <button class="btn-copy" data-snippet="drone.deliverToSpecialBuyer();">Copy</button>
+          </div>
+          <div class="api-desc">Fulfills the guest NPC request. Requires standing adjacent to buyer at Market.</div>
+        </div>
+
+        <div class="guide-category-header">📡 CATEGORY: COORDINATION & SHARED MEMORY</div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">mem.set(key, value)</span>
+            <button class="btn-copy" data-snippet="mem.set('task', 'done');">Copy</button>
+          </div>
+          <div class="api-desc">Saves state value in shared memory board. Accessible by all drones.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">mem.get(key, default)</span>
+            <button class="btn-copy" data-snippet="mem.get('task', 'idle')">Copy</button>
+          </div>
+          <div class="api-desc">Reads state from shared board. Returns default if key is missing.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">mem.inc(key, amount)</span>
+            <button class="btn-copy" data-snippet="mem.inc('ore_count', 1);">Copy</button>
+          </div>
+          <div class="api-desc">Atomically increments/decrements a shared numeric counter.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.getDrones()</span>
+            <button class="btn-copy" data-snippet="drone.getDrones()">Copy</button>
+          </div>
+          <div class="api-desc">Returns list of active drones and their positions.</div>
+        </div>
+
+      </div>
+    </div>
+      </div>
+
+      <!-- Floating Tooltip -->
+  <div id="inventory-tooltip"></div>
+
+  <!-- Production Efficiency Dashboard (HTML Text Overlay, transparent, bottom-left) -->
+  <div id="production-dashboard">
+    <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: #00ffcc; margin-bottom: 2px;">⚡ EFISIENSI PRODUKSI</div>
+    <div id="production-dashboard-rates">
+      <span style="color: #666; font-style: italic;">No active production rates benched.</span>
+    </div>
+  </div>
+
+  <!-- Smartphone Overlay (Q) -->
+  <div id="smartphone-chat">
+    <div class="smartphone-header">
+      <div class="smartphone-status-dot"></div>
+      <div class="smartphone-title">ELI'S SMARTPHONE</div>
+      <button id="btn-close-phone" style="margin-left: auto; background: none; border: none; color: #ff0055; cursor: pointer; font-size: 10px; font-family: 'Press Start 2P', monospace;">X</button>
+    </div>
+    
+    <!-- Phone App Screen -->
+    <div id="phone-app-screen" style="flex: 1; display: flex; flex-direction: column; height: calc(100% - 30px); overflow: hidden; margin-top: 6px;">
+      <!-- App Home Menu (Default screen) -->
+      <div id="phone-home-menu" style="display: flex; flex-direction: column; gap: 12px; padding: 20px 10px; justify-content: center; height: 100%;">
+        <div style="text-align: center; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #888; margin-bottom: 12px;">PILIH APLIKASI</div>
+        
+        <!-- App 1: Eli Chat -->
+        <button id="btn-app-chat" style="background: rgba(255, 0, 85, 0.08); border: 2px solid #ff0055; color: #ff0055; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: bold; width: 100%; transition: all 0.2s ease;">
+          <span style="font-size: 20px;">💬</span>
+          <div style="text-align: left;">
+            <div>Eli-Chat</div>
+            <div style="font-size: 8.5px; font-weight: normal; color: #aaa; margin-top: 2px;">Laporan otonom & dialog Eli</div>
+          </div>
+        </button>
+
+        <!-- App 2: Sektor ESDM -->
+        <button id="btn-app-esdm" style="background: rgba(0, 255, 204, 0.08); border: 2px solid #00ffcc; color: #00ffcc; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: bold; width: 100%; transition: all 0.2s ease;">
+          <span style="font-size: 20px;">⚡</span>
+          <div style="text-align: left;">
+            <div>Sektor ESDM</div>
+            <div style="font-size: 8.5px; font-weight: normal; color: #aaa; margin-top: 2px;">Toko benih & generator listrik</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Eli Chat App Screen -->
+      <div id="phone-app-chat" style="display: none; flex-direction: column; flex: 1; height: 100%; overflow: hidden;">
+        <div style="display: flex; align-items: center; border-bottom: 1px solid #16213e; padding-bottom: 4px; margin-bottom: 6px;">
+          <button id="btn-chat-back" style="background: none; border: none; color: #888; font-size: 11px; cursor: pointer; padding-right: 8px; font-family: inherit;">⬅ Back</button>
+          <span style="font-size: 10px; font-weight: bold; color: #e2e8f0;">Eli-Chat</span>
+        </div>
+        <div id="smartphone-chat-messages" class="smartphone-body">
+          <!-- Chat messages render dynamically -->
+        </div>
+        <div id="smartphone-chat-actions" class="smartphone-footer">
+          <!-- Reply buttons render dynamically -->
+        </div>
+      </div>
+
+      <!-- Sektor ESDM App Screen -->
+      <div id="phone-app-esdm" style="display: none; flex-direction: column; flex: 1; height: 100%; overflow: hidden;">
+        <div style="display: flex; align-items: center; border-bottom: 1px solid #16213e; padding-bottom: 4px; margin-bottom: 6px;">
+          <button id="btn-esdm-back" style="background: none; border: none; color: #888; font-size: 11px; cursor: pointer; padding-right: 8px; font-family: inherit;">⬅ Back</button>
+          <span style="font-size: 10px; font-weight: bold; color: #e2e8f0;">Sektor ESDM</span>
+        </div>
+        
+        <div class="smartphone-body" style="gap: 12px; overflow-y: auto;">
+          <div style="font-size: 9px; color: #888; line-height: 1.4; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+            Remote belanja benih & status generator listrik produksi.
+          </div>
+          
+          <!-- Seed Shop Section -->
+          <div>
+            <div style="font-family: 'Press Start 2P', monospace; font-size: 6px; color: #00ffcc; margin-bottom: 6px;">REMOTE SHOP</div>
+            <div id="phone-esdm-shop" style="display: flex; flex-direction: column; gap: 6px;">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+          
+          <!-- Generator / Power Section -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 4px;">
+            <div style="font-family: 'Press Start 2P', monospace; font-size: 6px; color: #ffd700; margin-bottom: 6px;">STATUS KELISTRIKAN</div>
+            <div style="background: rgba(255, 215, 0, 0.05); border: 1px solid rgba(255, 215, 0, 0.15); border-radius: 6px; padding: 8px; font-size: 9.5px; color: #ffd700; display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span>Grid Power:</span>
+                <span style="font-weight: bold; color: #fff;">100% ONLINE</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Capacity:</span>
+                <span>45 kW / 45 kW</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Active Drones:</span>
+                <span id="phone-active-drones-count" style="color: #fff;">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backpack Pop-up Overlay (B) -->
+  <div id="backpack-popup">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16213e; padding-bottom: 8px; margin-bottom: 12px;">
+      <span style="font-family: 'Press Start 2P', monospace; font-size: 8px; color: #00ffcc; display: flex; align-items: center; gap: 6px;">🎒 BACKPACK INVENTORY</span>
+      <button id="btn-close-backpack" style="background: none; border: none; color: #00ffcc; cursor: pointer; font-size: 10px; font-family: 'Press Start 2P', monospace;">X</button>
+    </div>
+    
+    <div style="flex: 1; overflow-y: auto; padding-right: 4px; min-height: 180px; scrollbar-width: thin; scrollbar-color: #00ffcc transparent;">
+      <div class="inventory-grid" id="backpack-popup-grid" style="grid-template-columns: repeat(6, 1fr); gap: 10px;">
+        <!-- Filled dynamically -->
+      </div>
+    </div>
+    
+    <!-- Details Panel -->
+    <div id="backpack-popup-details">
+      <div style="color: #666; font-style: italic; text-align: center; margin-top: 10px;">Pilih item untuk melihat deskripsi</div>
+    </div>
+  </div>
+
+  <!-- Warehouse Pop-up Overlay (E near Warehouse) -->
+  <div id="warehouse-popup">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #16213e; padding-bottom: 8px; margin-bottom: 12px;">
+      <span style="font-family: 'Press Start 2P', monospace; font-size: 8px; color: #ff0055; display: flex; align-items: center; gap: 6px;">🧱 WAREHOUSE STORAGE</span>
+      <button id="btn-close-warehouse" style="background: none; border: none; color: #ff0055; cursor: pointer; font-size: 10px; font-family: 'Press Start 2P', monospace;">X</button>
+    </div>
+    
+    <div style="font-size: 10px; color: #888; margin-bottom: 10px; line-height: 1.4;">
+      Centralized storage with infinite capacity. Click items to withdraw 1 to backpack, Shift-Click to withdraw all.
+    </div>
+
+    <!-- Deposit button -->
+    <button id="btn-warehouse-popup-deposit-all" style="width: 100%; background: rgba(0, 255, 204, 0.08); border: 1px solid rgba(0, 255, 204, 0.15); color: #00ffcc; border-radius: 6px; padding: 8px; margin-bottom: 10px; font-family: inherit; font-size: 10px; cursor: pointer; transition: all 0.2s ease;">
+      📥 Deposit all Crops & Materials from Backpack
+    </button>
+    
+    <div style="flex: 1; overflow-y: auto; padding-right: 4px; min-height: 200px; scrollbar-width: thin; scrollbar-color: #ff0055 transparent;">
+      <div class="inventory-grid" id="warehouse-popup-grid" style="grid-template-columns: repeat(6, 1fr); gap: 10px;">
+        <!-- Filled dynamically: 24 slots, empty slots show dashed borders -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+    </body>
+    </html>
