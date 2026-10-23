@@ -14,16 +14,8 @@
  *   (other items)    → shows "cannot use here" message
  */
 
-import { HOTBAR_SLOTS, GAME_WIDTH, GAME_HEIGHT, TILE_SIZE } from '../config/constants.js';
-
-/** Width/height of each hotbar slot */
-const SLOT_SIZE = 36;
-/** Gap between slots */
-const SLOT_GAP = 4;
-/** Total hotbar width */
-const HOTBAR_W = HOTBAR_SLOTS * (SLOT_SIZE + SLOT_GAP) - SLOT_GAP;
-/** Margin from bottom of canvas */
-const BOTTOM_MARGIN = 8;
+import { HOTBAR_SLOTS } from '../config/constants.js';
+import { hotbarLayout } from '../rendering/viewport.js';
 
 /** Maps item ID to action type and plant type (if applicable) */
 const ITEM_ACTIONS = {
@@ -33,23 +25,6 @@ const ITEM_ACTIONS = {
   potato_seed:     { action: 'plant',   plantType: 'potato' },
   cactus_seed:     { action: 'plant',   plantType: 'cactus' },
   apple_tree_seed: { action: 'plant',   plantType: 'apple_tree' },
-};
-
-/** Emoji icons for items */
-const ITEM_EMOJIS = {
-  watering_can:    '🚿',
-  plow:            '🔨',
-  wheat_seed:      '🌾',
-  potato_seed:     '🥔',
-  cactus_seed:     '🌵',
-  apple_tree_seed: '🍏',
-  wheat:           '🌿',
-  potato:          '🥔',
-  cactus:          '🌵',
-  apple_tree:      '🍎',
-  module_farming:  '🌾',
-  module_supplier: '📦',
-  module_seller:   '💰',
 };
 
 export default class Hotbar {
@@ -72,148 +47,34 @@ export default class Hotbar {
     /** @type {number} Currently active slot index (0-based) */
     this.activeSlot = 0;
 
-    // ── Calculate position ──────────────────────────────────────
-    const startX = GAME_WIDTH / 2 - HOTBAR_W / 2;
-    const startY = GAME_HEIGHT - SLOT_SIZE - BOTTOM_MARGIN;
-
-    this._startX = startX;
-    this._startY = startY;
-
-    // ── Build slot graphics ──────────────────────────────────────
-    this._slotBgs = [];
-    this._slotTexts = [];
-    this._slotCountTexts = [];
-    this._slotKeyTexts = [];
-
-    for (let i = 0; i < HOTBAR_SLOTS; i++) {
-      const sx = startX + i * (SLOT_SIZE + SLOT_GAP);
-      const sy = startY;
-      const cx = sx + SLOT_SIZE / 2;
-      const cy = sy + SLOT_SIZE / 2;
-
-      // Slot background
-      const bg = scene.add.rectangle(cx, cy, SLOT_SIZE, SLOT_SIZE, 0x0a0a1a, 0.85);
-      bg.setStrokeStyle(1.5, i === 0 ? 0x00ffcc : 0x333355, 1);
-      bg.setScrollFactor(0).setDepth(101);
-      bg.setInteractive({ useHandCursor: true });
-      
-      // Make background draggable in Phaser
+    this._slotBgs = []; this._slotTexts = []; this._slotCountTexts = []; this._slotKeyTexts = [];
+    for (let i=0; i<HOTBAR_SLOTS; i++) {
+      const bg=scene.add.rectangle(0,0,44,44,0x22343c).setStrokeStyle(1,0x42535b).setScrollFactor(0).setDepth(101).setInteractive({useHandCursor:true});
       scene.input.setDraggable(bg);
-
-      // Handle selection or unequip clicks
-      bg.on('pointerdown', (pointer) => {
-        if (pointer.rightButtonDown()) {
-          // Right-click: unequip item in slot back to backpack
-          this.unequipSlot(i);
-        } else {
-          // Left-click: select slot
-          this.setActiveSlot(i);
-        }
-      });
-
-      // Handle slot drag sorting / unequip
-      bg.on('dragstart', () => {
-        bg.setScale(1.1);
-        bg.setAlpha(0.7);
-        bg.setDepth(110);
-      });
-
-      bg.on('drag', (pointer) => {
-        // Track pointer screen coordinate directly
-        bg.x = pointer.x;
-        bg.y = pointer.y;
-
-        // Move text elements along with the background rectangle
-        this._slotTexts[i].setPosition(bg.x, bg.y - 4);
-        this._slotCountTexts[i].setPosition(bg.x + 10, bg.y + 8);
-        this._slotKeyTexts[i].setPosition(bg.x - SLOT_SIZE / 2 + 3, bg.y - SLOT_SIZE / 2 + 2);
-      });
-
-      bg.on('dragend', (pointer) => {
-        bg.setScale(1);
-        bg.setAlpha(0.85);
-        bg.setDepth(101);
-
-        // Calculate original slot positions
-        const originalSx = startX + i * (SLOT_SIZE + SLOT_GAP);
-        const originalSy = startY;
-        const originalCx = originalSx + SLOT_SIZE / 2;
-        const originalCy = originalSy + SLOT_SIZE / 2;
-
-        // Check if dropped outside canvas or over the Monaco/Backpack DOM Editor panel
-        const editorPanel = document.getElementById('editor-panel');
-        if (editorPanel) {
-          const rect = editorPanel.getBoundingClientRect();
-          const cx = pointer.event.clientX;
-          const cy = pointer.event.clientY;
-
-          if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
-            // Dragged to editor panel -> unequip slot
-            this.unequipSlot(i);
-            // Reset visual position
-            bg.setPosition(originalCx, originalCy);
-            this._slotTexts[i].setPosition(originalCx, originalCy - 4);
-            this._slotCountTexts[i].setPosition(originalCx + 10, originalCy + 8);
-            this._slotKeyTexts[i].setPosition(originalSx + 3, originalSy + 2);
-            return;
+      bg.on('pointerdown', pointer => { if(scene.isModalOpen)return; if(pointer.rightButtonDown())this.unequipSlot(i); else this.setActiveSlot(i); });
+      bg.on('drag', pointer => { if(scene.isModalOpen)return; bg.setPosition(Math.round(pointer.x),Math.round(pointer.y));this._slotTexts[i].setPosition(bg.x,bg.y); });
+      bg.on('dragend', pointer => {
+        if(!scene.isModalOpen){
+          const target=this.getSlotIndexAt(pointer.x,pointer.y);
+          if(target!==-1&&target!==i){
+            [this.slots[i],this.slots[target]]=[this.slots[target],this.slots[i]];
+            [this.slotQuantities[i],this.slotQuantities[target]]=[this.slotQuantities[target],this.slotQuantities[i]];
+            this.refresh();
           }
         }
-
-        // Check if dropped on another hotbar slot to swap
-        const localX = pointer.x;
-        const localY = pointer.y;
-        const targetSlot = this.getSlotIndexAt(localX, localY);
-
-        if (targetSlot !== -1 && targetSlot !== i) {
-          // Swap item IDs
-          const tempId = this.slots[i];
-          this.slots[i] = this.slots[targetSlot];
-          this.slots[targetSlot] = tempId;
-
-          // Swap quantities
-          const tempQty = this.slotQuantities[i];
-          this.slotQuantities[i] = this.slotQuantities[targetSlot];
-          this.slotQuantities[targetSlot] = tempQty;
-
-          // Re-render both slots
-          this._renderSlot(i);
-          this._renderSlot(targetSlot);
-        }
-
-        // Return components back to their aligned grid positions
-        bg.setPosition(originalCx, originalCy);
-        this._slotTexts[i].setPosition(originalCx, originalCy - 4);
-        this._slotCountTexts[i].setPosition(originalCx + 10, originalCy + 8);
-        this._slotKeyTexts[i].setPosition(originalSx + 3, originalSy + 2);
+        this.layout();
       });
-
       this._slotBgs.push(bg);
-
-      // Item emoji text
-      const txt = scene.add.text(cx, cy - 4, '', {
-        fontSize: '18px',
-        resolution: 2,
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
-      this._slotTexts.push(txt);
-
-      // Count badge
-      const countTxt = scene.add.text(cx + 10, cy + 8, '', {
-        fontFamily: '"Courier New", monospace',
-        fontSize: '16px',
-        color: '#ffffff',
-        resolution: 3,
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(103).setScale(0.5);
-      this._slotCountTexts.push(countTxt);
-
-      // Key number hint
-      const keyTxt = scene.add.text(sx + 3, sy + 2, String(i + 1), {
-        fontFamily: '"Courier New", monospace',
-        fontSize: '14px',
-        color: '#555577',
-        resolution: 3,
-      }).setScrollFactor(0).setDepth(103).setScale(0.5);
-      this._slotKeyTexts.push(keyTxt);
+      this._slotTexts.push(scene.add.image(0,0,'icon_crate').setVisible(false).setScrollFactor(0).setDepth(102));
+      const style={fontFamily:'JetBrains Mono, monospace',fontSize:'9px',color:'#edf0d4',resolution:1};
+      this._slotCountTexts.push(scene.add.text(0,0,'',style).setOrigin(1,1).setScrollFactor(0).setDepth(103));
+      this._slotKeyTexts.push(scene.add.text(0,0,String(i+1),{...style,color:'#93a7a1'}).setScrollFactor(0).setDepth(103));
     }
+    this.layout();
+    this.setActiveSlot(0);
+    this._onResize=()=>this.layout();
+    scene.game.events.on('pixel-resize',this._onResize);
+    scene.events.once('shutdown',()=>scene.game.events.off('pixel-resize',this._onResize));
 
     // ── Keyboard input ──────────────────────────────────────────
     this._setupKeys();
@@ -243,8 +104,8 @@ export default class Hotbar {
 
       // Map client screen coordinate to local Phaser game coordinate
       const rect = canvas.getBoundingClientRect();
-      const localX = (e.clientX - rect.left) * (GAME_WIDTH / rect.width);
-      const localY = (e.clientY - rect.top) * (GAME_HEIGHT / rect.height);
+      const localX = (e.clientX - rect.left) * (this.scene.scale.width / rect.width);
+      const localY = (e.clientY - rect.top) * (this.scene.scale.height / rect.height);
 
       const slotIdx = this.getSlotIndexAt(localX, localY);
       if (slotIdx !== -1) {
@@ -257,16 +118,21 @@ export default class Hotbar {
   }
 
   /** Calculate slot index (0-7) at the specified local canvas coordinate, or -1 */
-  getSlotIndexAt(x, y) {
-    if (y < this._startY || y > this._startY + SLOT_SIZE) return -1;
+  layout() {
+    const zoom=this.scene.registry.get('pixelZoom')||1;
+    this._layout=hotbarLayout(this.scene.scale.width,this.scene.scale.height,zoom);
+    const size=this._layout.size;
+    this._layout.positions.forEach((p,i)=>{
+      const cx=p.x+size/2,cy=p.y+size/2;
+      this._slotBgs[i].setPosition(cx,cy).setSize(size,size);
+      this._slotTexts[i].setPosition(cx,cy).setDisplaySize(zoom===2?16:32,zoom===2?16:32);
+      this._slotCountTexts[i].setPosition(p.x+size-2,p.y+size-1).setFontSize(zoom===2?6:10);
+      this._slotKeyTexts[i].setPosition(p.x+2,p.y+1).setFontSize(zoom===2?5:8);
+    });
+  }
 
-    for (let i = 0; i < HOTBAR_SLOTS; i++) {
-      const sx = this._startX + i * (SLOT_SIZE + SLOT_GAP);
-      if (x >= sx && x <= sx + SLOT_SIZE) {
-        return i;
-      }
-    }
-    return -1;
+  getSlotIndexAt(x,y) {
+    return this._layout.positions.findIndex(p=>x>=p.x&&x<p.x+this._layout.size&&y>=p.y&&y<p.y+this._layout.size);
   }
 
   /* ================================================================
@@ -415,6 +281,11 @@ export default class Hotbar {
     return this.slots[this.activeSlot] || null;
   }
 
+  /** Refresh after restoring saved slots and quantities. */
+  refresh() {
+    for (let i = 0; i < HOTBAR_SLOTS; i++) this._renderSlot(i);
+  }
+
   /**
    * Set active slot by index.
    * @param {number} idx
@@ -422,10 +293,10 @@ export default class Hotbar {
   setActiveSlot(idx) {
     if (idx < 0 || idx >= HOTBAR_SLOTS) return;
     // Deactivate old
-    this._slotBgs[this.activeSlot].setStrokeStyle(1.5, 0x333355, 1);
+    this._slotBgs[this.activeSlot].setStrokeStyle(1, 0x42535b, 1);
     this.activeSlot = idx;
     // Activate new
-    this._slotBgs[this.activeSlot].setStrokeStyle(2.5, 0x00ffcc, 1);
+    this._slotBgs[this.activeSlot].setStrokeStyle(2, 0x63d8d1, 1);
   }
 
   /**
@@ -470,6 +341,7 @@ export default class Hotbar {
   }
 
   _isDOMInputFocused() {
+    if (this.scene.isModalOpen) return true;
     const active = document.activeElement;
     if (!active) return false;
     const tag = active.tagName;
@@ -481,8 +353,8 @@ export default class Hotbar {
 
   _renderSlot(idx) {
     const itemId = this.slots[idx];
-    const emoji = itemId ? (ITEM_EMOJIS[itemId] || '📦') : '';
-    this._slotTexts[idx].setText(emoji);
+    this._slotTexts[idx].setVisible(Boolean(itemId));
+    if (itemId) this._slotTexts[idx].setTexture(this.scene.textures.exists(`icon_${itemId}`) ? `icon_${itemId}` : 'icon_crate');
     this._updateCountBadge(idx);
   }
 

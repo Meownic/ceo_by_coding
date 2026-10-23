@@ -91,6 +91,13 @@ export default class SaveSystem {
       minedOres,
       machines,
       specialBuyer,
+      operations: this.scene.operationsSystem?.getSaveState(),
+      warehouse: this.scene.warehouse?.getAll(),
+      hotbar: this.scene.hotbar ? {
+        slots: [...this.scene.hotbar.slots],
+        quantities: [...this.scene.hotbar.slotQuantities],
+        activeSlot: this.scene.hotbar.activeSlot,
+      } : null,
     };
   }
 
@@ -325,6 +332,25 @@ export default class SaveSystem {
       }
     }
 
+    // Optional fields keep existing version-1 saves compatible.
+    if (this.scene.warehouse) {
+      this.scene.warehouse.items.clear();
+      if (Array.isArray(data.warehouse)) {
+        data.warehouse.forEach(({ id, count }) => {
+          if (typeof id === 'string' && Number.isSafeInteger(count) && count > 0) this.scene.warehouse.items.set(id, count);
+        });
+      }
+      this.scene.warehouse.events.emit('changed', { action: 'restore' });
+    }
+    if (data.hotbar && this.scene.hotbar) {
+      const hotbar = this.scene.hotbar;
+      hotbar.slots = hotbar.slots.map((_, i) => typeof data.hotbar.slots?.[i] === 'string' ? data.hotbar.slots[i] : null);
+      hotbar.slotQuantities = hotbar.slots.map((item, i) => item && Number.isSafeInteger(data.hotbar.quantities?.[i]) ? Math.max(0, data.hotbar.quantities[i]) : 0);
+      hotbar.setActiveSlot(Number.isInteger(data.hotbar.activeSlot) ? data.hotbar.activeSlot : 0);
+      hotbar.refresh();
+    }
+    this.scene.operationsSystem?.loadSaveState(data.operations);
+    this.scene.operationsUI?.render();
     return true;
   }
 }

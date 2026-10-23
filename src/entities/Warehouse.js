@@ -42,31 +42,22 @@ export default class Warehouse {
     const cy = (ty + h / 2) * TILE_SIZE;
 
     // Background panel
-    this._bg = scene.add.rectangle(cx, cy, w * TILE_SIZE - 2, h * TILE_SIZE - 2, 0x2a1a4a, 0.9);
+    this._bg = scene.add.rectangle(cx, cy, w * TILE_SIZE, h * TILE_SIZE, 0x244c3a);
     this._bg.setDepth(2);
-    this._bg.setStrokeStyle(2, 0x9944ff, 0.9);
+    this._bg.setStrokeStyle(1, 0x244c3a);
 
     // Icon
-    this._icon = scene.add.text(cx, cy - 6, '🏭', {
-      fontSize: '22px',
-    }).setOrigin(0.5).setDepth(3);
+    this._icon = scene.add.image(cx, cy, 'warehouse').setDepth(3);
 
     // Label
-    this._label = scene.add.text(cx, cy + 12, 'WAREHOUSE', {
+    this._label = scene.add.text(cx, cy + 12, 'GUDANG', {
       fontFamily: '"Courier New", monospace',
-      fontSize: '12px',
-      color: '#cc88ff',
-      resolution: 3,
-    }).setOrigin(0.5).setDepth(3).setScale(0.5);
+      fontSize: '8px',
+      color: '#edf0d4',
+      resolution: 1,
+    }).setOrigin(0.5).setPosition(cx, cy + 25).setDepth(4);
 
     // Subtle pulsing glow
-    scene.tweens.add({
-      targets: this._bg,
-      alpha: { from: 0.85, to: 1 },
-      duration: 1500,
-      yoyo: true,
-      repeat: -1,
-    });
   }
 
   /* ================================================================

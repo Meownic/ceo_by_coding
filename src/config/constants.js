@@ -37,17 +37,17 @@ export const DRONE_SUPER_CARRIER_CAPACITY = 20000;
 // ── Colour palette ─────────────────────────────────────────────────
 export const COLORS = {
   GRASS: 0x4a7c59,
-  TILLED: 0x8b6914,
-  WATERED: 0x5a4a2a,
-  UI_BG: 0x1a1a2e,
-  UI_PANEL: 0x16213e,
-  UI_ACCENT: 0x0f3460,
-  UI_HIGHLIGHT: 0xe94560,
-  GOLD: 0xffd700,
-  TEXT_PRIMARY: 0xffffff,
-  TEXT_SECONDARY: 0xaaaaaa,
-  DRONE_GREEN: 0x00ff88,
-  DRONE_RED: 0xff4444,
+  TILLED: 0x9b794e,
+  WATERED: 0x42535b,
+  UI_BG: 0x101a21,
+  UI_PANEL: 0x22343c,
+  UI_ACCENT: 0x42535b,
+  UI_HIGHLIGHT: 0x63d8d1,
+  GOLD: 0xe9bf62,
+  TEXT_PRIMARY: 0xedf0d4,
+  TEXT_SECONDARY: 0x93a7a1,
+  DRONE_GREEN: 0x63d8d1,
+  DRONE_RED: 0xe9bf62,
 };
 
 // ── Zone Gates & Coordinates ───────────────────────────────────────

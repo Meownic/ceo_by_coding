@@ -33,6 +33,9 @@ import SharedMemory from '../systems/SharedMemory.js';
 import MachineSystem from '../systems/MachineSystem.js';
 import SpecialBuyerSystem from '../systems/SpecialBuyerSystem.js';
 import { MODULE_ITEM_IDS, getModuleTypeFromItemId } from '../data/modules.js';
+import OperationsSystem from '../systems/OperationsSystem.js';
+import OperationsUI from '../ui/OperationsUI.js';
+import PanelManager from '../ui/PanelManager.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -83,6 +86,10 @@ export class GameScene extends Phaser.Scene {
 
     // ── Create Warehouse ──
     this.warehouse = new Warehouse(this, 10, 2, 2, 2);
+    this.operationsSystem = new OperationsSystem(
+      this.inventorySystem, this.economySystem, this.profileSystem,
+      () => this.unlockedZones, this.warehouse,
+    );
 
     // ── Create Player ──
     this.player = new Player(this, 5, 5);
@@ -103,6 +110,7 @@ export class GameScene extends Phaser.Scene {
     this.deviceManager.register(this.drone);
 
     // ── Create UI ──
+    this.panelManager = new PanelManager(this);
     this.hud = new HUD(this, this.inventorySystem);
     this.hotbar = new Hotbar(this, this.inventorySystem);
     this.marketUI = new MarketUI(this, this.economySystem, this.inventorySystem);
@@ -114,21 +122,21 @@ export class GameScene extends Phaser.Scene {
     // ── Setup Special Buyer Event Listeners ──
     this.specialBuyerSystem.events.on('buyer-arrived', (buyer) => {
       if (this.hud) {
-        this.hud.showMessage(`✨ Special Buyer ${buyer.name} arrived! Wants ${buyer.reqCount}x ${buyer.reqItem.replace('_', ' ')}. Reward: ${buyer.reward}g!`, 5000);
+        this.hud.showMessage(` Special Buyer ${buyer.name} arrived! Wants ${buyer.reqCount}x ${buyer.reqItem.replace('_', ' ')}. Reward: ${buyer.reward}g!`, 5000);
       }
       this._spawnSpecialBuyerNPC();
     });
 
     this.specialBuyerSystem.events.on('buyer-left', (buyer) => {
       if (this.hud) {
-        this.hud.showMessage(`💨 Special Buyer ${buyer.name} left.`, 3000);
+        this.hud.showMessage(` Special Buyer ${buyer.name} left.`, 3000);
       }
       this._destroySpecialBuyerNPC();
     });
 
     this.specialBuyerSystem.events.on('buyer-fulfilled', (buyer) => {
       if (this.hud) {
-        this.hud.showMessage(`💰 Order fulfilled for ${buyer.name}! +${buyer.reward}g!`, 4000);
+        this.hud.showMessage(` Order fulfilled for ${buyer.name}! +${buyer.reward}g!`, 4000);
       }
       this.inventorySystem.addCoins(buyer.reward);
       this.profileSystem.addXp(50);
@@ -182,6 +190,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    this.operationsUI = new OperationsUI(this);
     // ── Setup Conveyor Belt Ticker ──
     this.time.addEvent({
       delay: 1000,
@@ -254,12 +263,12 @@ export class GameScene extends Phaser.Scene {
 
     // ── Setup XP Gain Event Listener ──
     this.events.on('xp-gain', (data) => {
-      this._showFloatingText(data.x, data.y, `+${data.amount} XP`, 0x00ffff);
+      this._showFloatingText(data.x, data.y, `+${data.amount} XP`, 0x63d8d1);
     });
 
     // ── Setup Level Up Listener ──
     this.profileSystem.events.on('level-up', (data) => {
-      this.hud.showMessage(`🎉 LEVEL UP! Reached Level ${data.level}!`, 4000);
+      this.hud.showMessage(` LEVEL UP! Reached Level ${data.level}!`, 4000);
       this._emitFruitParticles(this.player.tileX, this.player.tileY);
     });
 
@@ -279,7 +288,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Show welcome message
-    this.hud.showMessage('Welcome! Hotbar: 1-8 to select tool. SPACE to use. E to interact.', 5000);
+    this.hud.showMessage('1–8 pilih alat · Spasi gunakan · E interaksi', 4000);
   }
 
   spawnNewDrone() {
@@ -353,6 +362,8 @@ export class GameScene extends Phaser.Scene {
     if (this.hud) {
       this.hud.update();
     }
+    this.panelManager?.updateHudZone();
+    this._updateMachineVisuals(time);
 
     // Update floating interaction prompts
     this._updateInteractionPrompts();
@@ -573,24 +584,6 @@ export class GameScene extends Phaser.Scene {
           textureKey
         );
         plantSprite.setDepth(3);
-        plantSprite.setScale(0.8);
-        this.tweens.add({
-          targets: plantSprite,
-          scaleX: 1,
-          scaleY: 1,
-          duration: 200,
-          ease: 'Back.easeOut',
-        });
-
-        if (tile.hasFruit) {
-          this.tweens.add({
-            targets: plantSprite,
-            alpha: { from: 0.9, to: 1 },
-            duration: 800,
-            yoyo: true,
-            repeat: -1,
-          });
-        }
 
         this.plantSprites[y][x] = plantSprite;
       }
@@ -600,6 +593,23 @@ export class GameScene extends Phaser.Scene {
   // ══════════════════════════════════════
   //  INPUT HANDLING
   // ══════════════════════════════════════
+
+  _updateMachineVisuals(time) {
+    const frame = Math.floor(time / 500);
+    if (this._machineVisualFrame === frame) return;
+    this._machineVisualFrame = frame;
+    this.machineIndicators ||= new Map();
+    for (const machine of this.machineSystem.machines.values()) {
+      const sprite = this.tileSprites[machine.y]?.[machine.x];
+      if (sprite) sprite.setTexture(`machine_${machine.type}${machine.activeRecipe && frame % 2 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? '_work' : ''}`);
+      let marker = this.machineIndicators.get(machine.id);
+      if (!marker) {
+        marker = this.add.rectangle(machine.x * TILE_SIZE + 27, machine.y * TILE_SIZE + 5, 4, 4, 0x42535b).setDepth(5);
+        this.machineIndicators.set(machine.id, marker);
+      }
+      marker.setFillStyle(machine.outputBuffer.size ? 0xe9bf62 : machine.activeRecipe ? 0x63d8d1 : 0x42535b);
+    }
+  }
 
   _setupInput() {
     // SPACE uses active hotbar item on facing tile
@@ -687,10 +697,11 @@ export class GameScene extends Phaser.Scene {
 
   /** Check if DOM editor/input is focused — guards all game key handlers */
   _isDOMInputFocused() {
+    if (this.isModalOpen) return true;
     const active = document.activeElement;
     if (!active) return false;
     const tag = active.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
     const mc = document.getElementById('monaco-container');
     if (mc && mc.contains(active)) return true;
     return false;
@@ -725,16 +736,19 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const actionInfo = this.hotbar.getActiveItemAction();
-    if (!actionInfo) {
-      // No item — try smart action
-      const tile = this.gridManager.getTile(x, y);
-      if (tile) this._doSmartAction(x, y, tile);
+    const tile = this.gridManager.getTile(x, y);
+    if (!tile) return;
+
+    if (tile.isMachine && tile.machineId) {
+      this.machineUI.show(tile.machineId);
       return;
     }
 
-    const tile = this.gridManager.getTile(x, y);
-    if (!tile) return;
+    const actionInfo = this.hotbar.getActiveItemAction();
+    if (!actionInfo) {
+      this._doSmartAction(x, y, tile);
+      return;
+    }
 
     switch (actionInfo.action) {
       case 'till':
@@ -897,7 +911,7 @@ export class GameScene extends Phaser.Scene {
         this.gridManager.cropPlant(x, y);
         this._updateTileSprite(x, y);
         this._updatePlantSprite(x, y);
-        this.hud.showMessage('⚠️ Premature harvest! Growth reset.', 2000);
+        this.hud.showMessage(' Premature harvest! Growth reset.', 2000);
       }
     }
   }
@@ -947,10 +961,10 @@ export class GameScene extends Phaser.Scene {
 
       if (inRange) {
         // Cyan/green visual hint when within 2-tile radius interaction range
-        this.selectionCursor.setTint(0x00ffcc);
+        this.selectionCursor.clearTint();
       } else {
         // Red visual hint when out of range
-        this.selectionCursor.setTint(0xff3333);
+        this.selectionCursor.clearTint();
       }
 
       // Hover glow highlight for buildings, gates, machines, fences, ores
@@ -967,7 +981,7 @@ export class GameScene extends Phaser.Scene {
       const isMarket = this._isTileInMarketZone(this.cursorTileX, this.cursorTileY);
 
       if (isMarket && this.marketSprite) {
-        this.marketSprite.setTint(0xffe082); // soft gold glow for shop
+        this.marketSprite.clearTint(); // soft gold glow for shop
       } else if (tile) {
         const sprite = this.tileSprites[this.cursorTileY]?.[this.cursorTileX];
         const isFence = (this.cursorTileX === 0 || this.cursorTileX === GRID_COLS - 1 || 
@@ -977,7 +991,7 @@ export class GameScene extends Phaser.Scene {
                          (this.cursorTileX === 39 && this.cursorTileY >= 0 && this.cursorTileY <= 39 && this.cursorTileY !== 20));
 
         if (sprite && (tile.isMachine || tile.isOre || tile.isGate || isFence)) {
-          sprite.setTint(0x80deea); // Cyan glow for interactable structures and fences
+          sprite.clearTint();
           this.lastHoveredTileSprite = sprite;
         }
       }
@@ -1004,69 +1018,30 @@ export class GameScene extends Phaser.Scene {
   //  PARTICLE EFFECTS
   // ══════════════════════════════════════
 
-  _emitGrowthParticles(x, y) {
-    const px = x * TILE_SIZE + TILE_SIZE / 2;
-    const py = y * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 5; i++) {
-      const p = this.add.image(px + Phaser.Math.Between(-8, 8), py + Phaser.Math.Between(-8, 8), 'particle');
-      p.setTint(0x76ff03).setDepth(25).setScale(0.5);
-      this.tweens.add({ targets: p, y: p.y - 20, alpha: 0, scale: 0, duration: 600, ease: 'Power2', onComplete: () => p.destroy() });
+  _emitPixelParticles(x,y,color,count=5) {
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    for(let i=0;i<count;i++){
+      const p=this.add.rectangle(x*TILE_SIZE+16+Phaser.Math.Between(-8,8),y*TILE_SIZE+16,2,2,color).setDepth(25);
+      this.time.addEvent({delay:90,repeat:3,callback:()=>{p.x+=i%2?1:-1;p.y-=2;}});
+      this.time.delayedCall(380,()=>p.destroy());
     }
   }
-
-  _emitFruitParticles(x, y) {
-    const px = x * TILE_SIZE + TILE_SIZE / 2;
-    const py = y * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 8; i++) {
-      const p = this.add.image(px + Phaser.Math.Between(-10, 10), py + Phaser.Math.Between(-10, 10), 'particle');
-      p.setTint(0xffd700).setDepth(25);
-      this.tweens.add({ targets: p, y: p.y - 25, alpha: 0, duration: 800, ease: 'Power2', delay: i * 50, onComplete: () => p.destroy() });
-    }
-  }
-
-  _emitHarvestParticles(x, y) {
-    const px = x * TILE_SIZE + TILE_SIZE / 2;
-    const py = y * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 12; i++) {
-      const p = this.add.image(px + Phaser.Math.Between(-6, 6), py + Phaser.Math.Between(-6, 6), 'particle');
-      p.setTint(Phaser.Math.RND.pick([0xffd700, 0xff9800, 0x76ff03])).setDepth(25);
-      const angle = (i / 12) * Math.PI * 2;
-      const dist = Phaser.Math.Between(15, 30);
-      this.tweens.add({ targets: p, x: px + Math.cos(angle) * dist, y: py + Math.sin(angle) * dist - 10, alpha: 0, scale: 0, duration: 500, ease: 'Power2', delay: i * 30, onComplete: () => p.destroy() });
-    }
-  }
-
-  _emitWaterParticles(x, y) {
-    const px = x * TILE_SIZE + TILE_SIZE / 2;
-    const py = y * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 6; i++) {
-      const texKey = this.textures.exists('particle_water') ? 'particle_water' : 'particle';
-      const p = this.add.image(px + Phaser.Math.Between(-10, 10), py - 10, texKey);
-      p.setTint(0x4fc3f7).setDepth(25);
-      this.tweens.add({ targets: p, y: py + Phaser.Math.Between(0, 10), alpha: 0, duration: 400, ease: 'Power1', delay: i * 60, onComplete: () => p.destroy() });
-    }
-  }
-
-  _emitDirtParticles(x, y) {
-    const px = x * TILE_SIZE + TILE_SIZE / 2;
-    const py = y * TILE_SIZE + TILE_SIZE / 2;
-    for (let i = 0; i < 6; i++) {
-      const p = this.add.image(px + Phaser.Math.Between(-6, 6), py + Phaser.Math.Between(-2, 4), 'particle');
-      p.setTint(0x8B6914).setDepth(25);
-      this.tweens.add({ targets: p, y: p.y - Phaser.Math.Between(8, 20), x: p.x + Phaser.Math.Between(-10, 10), alpha: 0, duration: 400, ease: 'Power2', delay: i * 40, onComplete: () => p.destroy() });
-    }
-  }
+  _emitGrowthParticles(x,y){this._emitPixelParticles(x,y,0xa4b18b);}
+  _emitFruitParticles(x,y){this._emitPixelParticles(x,y,0xe9bf62);}
+  _emitHarvestParticles(x,y){this._emitPixelParticles(x,y,0xe9bf62,8);}
+  _emitWaterParticles(x,y){this._emitPixelParticles(x,y,0x63d8d1);}
+  _emitDirtParticles(x,y){this._emitPixelParticles(x,y,0x9b794e);}
 
   _showFloatingText(tx, ty, text, color) {
     const px = tx * TILE_SIZE + TILE_SIZE / 2;
     const py = ty * TILE_SIZE + TILE_SIZE / 2;
     const txt = this.add.text(px, py - 10, text, {
       fontFamily: '"Courier New", Courier, monospace',
-      fontSize: '22px',
+      fontSize: '11px',
       color: '#' + color.toString(16).padStart(6, '0'),
       fontWeight: 'bold',
       resolution: 3,
-    }).setOrigin(0.5).setDepth(30).setScale(0.5);
+    }).setOrigin(0.5).setDepth(30);
     this.tweens.add({ targets: txt, y: py - 30, alpha: 0, duration: 1000, onComplete: () => txt.destroy() });
   }
 
@@ -1112,7 +1087,7 @@ export class GameScene extends Phaser.Scene {
         zone4: 'Lab Key'
       };
       const keyName = keyNames[gateInfo.key] || 'Zone Key';
-      this.hud.showMessage(`🔒 Locked! You need the ${keyName} to unlock this gate.\nBuy it at the shop for ${gateInfo.cost}g (Requires Level ${gateInfo.level}).`, 5000);
+      this.hud.showMessage(` Locked! You need the ${keyName} to unlock this gate.\nBuy it at the shop for ${gateInfo.cost}g (Requires Level ${gateInfo.level}).`, 5000);
       return;
     }
 
@@ -1132,7 +1107,7 @@ export class GameScene extends Phaser.Scene {
       this._updateTileSprite(x, y);
       this._updateCameraBounds();
 
-      this.hud.showMessage(`🎉 Unlocked ${gateInfo.key.toUpperCase()}! Map expanded!`, 4000);
+      this.hud.showMessage(` Unlocked ${gateInfo.key.toUpperCase()}! Map expanded!`, 4000);
       this._emitFruitParticles(x, y);
     }
   }
@@ -1161,19 +1136,19 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Create container fixed to camera
-    const container = this.add.container(GAME_WIDTH / 2, -50);
+    const container = this.add.container(Math.floor(this.scale.width / 2), -50);
     container.setScrollFactor(0).setDepth(150);
 
     // Banner background panel
     const width = displayName.length * 9 + 40;
-    const bg = this.add.rectangle(0, 0, width, 30, 0x1a1a2e, 0.95);
-    bg.setStrokeStyle(1.5, 0x00ffff, 0.9);
+    const bg = this.add.rectangle(0, 0, width, 30, 0x101a21, 0.95);
+    bg.setStrokeStyle(1.5, 0x63d8d1, 0.9);
 
     // Banner text
     const text = this.add.text(0, 0, displayName, {
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: '12px',
-      color: '#00ffff',
+      color: '#63d8d1',
       fontWeight: 'bold',
       resolution: 4,
     }).setOrigin(0.5);
@@ -1251,10 +1226,10 @@ export class GameScene extends Phaser.Scene {
       this.promptText = this.add.text(x, y, text, {
         fontFamily: 'JetBrains Mono, monospace',
         fontSize: '11px',
-        color: '#ffffff',
-        backgroundColor: '#1a1a2e',
+        color: '#edf0d4',
+        backgroundColor: '#101a21',
         padding: { x: 6, y: 3 },
-        stroke: '#00ffff',
+        stroke: '#63d8d1',
         strokeThickness: 1,
         resolution: 4,
       }).setOrigin(0.5).setDepth(40);
@@ -1290,6 +1265,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
+      // An idle session without production is not a script failure.
+      if (!hasEarnings && !data.hasCrash) return;
       const isEfficient = hasEarnings && !data.hasCrash;
       this.triggerWelcomeBack(isEfficient, earnings, data.crashedDrone || 'drone');
     } catch (e) {
@@ -1333,12 +1310,12 @@ export class GameScene extends Phaser.Scene {
     const txt = this.add.text(0, -6, text, {
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: '8px',
-      color: '#ffffff',
-      backgroundColor: '#16213e',
+      color: '#edf0d4',
+      backgroundColor: '#22343c',
       padding: { x: 5, y: 3 },
       resolution: 4
     }).setOrigin(0.5);
-    txt.setStroke('#ff0055', 1);
+    txt.setStroke('#9b794e', 1);
 
     container.add(txt);
     this.speechBubbleContainer = container;
@@ -1367,9 +1344,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (addedToWarehouseCount > 0) {
-      this.hud.showMessage(`📦 Deposited +${addedToWarehouseCount} items into the Warehouse!`, 4000);
+      this.hud.showMessage(` Deposited +${addedToWarehouseCount} items into the Warehouse!`, 4000);
     } else if (addedToBackpackCount > 0) {
-      this.hud.showMessage(`🎒 Added +${addedToBackpackCount} items to Backpack!`, 4000);
+      this.hud.showMessage(` Added +${addedToBackpackCount} items to Backpack!`, 4000);
     }
 
     // Refresh inventory and devices tabs
