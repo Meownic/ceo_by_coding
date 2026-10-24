@@ -100,7 +100,7 @@
       padding: 4px 10px;
       background: #101a21;
       border: 1px solid #22343c;
-      border-radius: 0;
+      border-radius: 4px;
       color: #93a7a1;
       font-size: 11px;
       font-family: 'JetBrains Mono', monospace;
@@ -123,14 +123,14 @@
     .script-tab .color-dot {
       width: 8px;
       height: 8px;
-      border-radius: 0;
+      border-radius: 50%;
     }
 
     #btn-new-script {
       padding: 4px 10px;
       background: transparent;
       border: 1px dashed #22343c;
-      border-radius: 0;
+      border-radius: 4px;
       color: #22343c;
       font-size: 11px;
       font-family: 'JetBrains Mono', monospace;
@@ -164,7 +164,7 @@
     .editor-btn {
       padding: 6px 14px;
       border: none;
-      border-radius: 0;
+      border-radius: 4px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 600;
@@ -182,7 +182,7 @@
 
     #btn-run:hover {
       background: #4a7c59;
-      box-shadow: none;
+      box-shadow: 0 0 12px rgba(99, 216, 209, 0.4);
     }
 
     #btn-run:active {
@@ -201,7 +201,7 @@
 
     #btn-stop:hover {
       background: #9b794e;
-      box-shadow: none;
+      box-shadow: 0 0 12px rgba(99, 216, 209, 0.4);
     }
 
     .editor-btn:disabled {
@@ -250,7 +250,7 @@
       color: #4a7c59;
       font-size: 9px;
       padding: 2px 6px;
-      border-radius: 0;
+      border-radius: 3px;
       cursor: pointer;
       font-family: 'JetBrains Mono', monospace;
     }
@@ -394,7 +394,7 @@
       color: #9b794e;
       border-bottom-color: #9b794e;
       background: rgba(99,216,209, 0.08);
-      text-shadow: 0 0 10px rgba(99,216,209, 0.5);
+      text-shadow: 0 0 10px rgba(99, 216, 209, 0.5);
     }
 
     /* Tab Views */
@@ -425,10 +425,10 @@
     .profile-card {
       background: rgba(18, 18, 36, 0.7);
       border: 1px solid rgba(99,216,209, 0.2);
-      border-radius: 0;
+      border-radius: 12px;
       padding: 20px;
-      box-shadow: none;
-      backdrop-filter: none;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -437,7 +437,7 @@
 
     .profile-card:hover {
       border-color: rgba(99,216,209, 0.4);
-      box-shadow: none;
+      box-shadow: 0 8px 32px 0 rgba(99, 216, 209, 0.1);
     }
 
     .profile-name-row {
@@ -450,7 +450,7 @@
       flex: 1;
       background: rgba(10, 10, 20, 0.6);
       border: 1px solid #101a21;
-      border-radius: 0;
+      border-radius: 6px;
       color: #edf0d4;
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
@@ -461,7 +461,7 @@
 
     .profile-name-input:focus {
       border-color: #63d8d1;
-      box-shadow: none;
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
       background: rgba(10, 10, 20, 0.8);
     }
 
@@ -469,19 +469,19 @@
       background: #9b794e;
       color: white;
       border: none;
-      border-radius: 0;
+      border-radius: 6px;
       padding: 8px 16px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: none;
+      box-shadow: 0 0 12px rgba(99, 216, 209, 0.2);
     }
 
     .btn-profile-save:hover {
       background: #9b794e;
-      box-shadow: none;
+      box-shadow: 0 0 16px rgba(99, 216, 209, 0.4);
       transform: translateY(-1px);
     }
 
@@ -519,7 +519,7 @@
       height: 10px;
       background: #101a21;
       border: 1px solid #101a21;
-      border-radius: 0;
+      border-radius: 5px;
       overflow: hidden;
     }
 
@@ -528,7 +528,7 @@
       background: #101a21;
       width: 0%;
       transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: none;
+      box-shadow: 0 0 10px rgba(99, 216, 209, 0.5);
     }
 
     /* Upgrades Section */
@@ -540,7 +540,7 @@
       margin-top: 12px;
       border-left: 3px solid #9b794e;
       padding-left: 10px;
-      text-shadow: 0 0 8px rgba(99,216,209, 0.2);
+      text-shadow: 0 0 8px rgba(99, 216, 209, 0.2);
     }
 
     .upgrades-container {
@@ -552,12 +552,12 @@
     .upgrade-card {
       background: rgba(18, 18, 36, 0.5);
       border: 1px solid rgba(99,216,209, 0.15);
-      border-radius: 0;
+      border-radius: 12px;
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
-      backdrop-filter: none;
+      backdrop-filter: blur(12px);
       transition: all 0.3s ease;
     }
 
@@ -565,7 +565,7 @@
       border-color: rgba(99,216,209, 0.35);
       background: rgba(18, 18, 36, 0.7);
       transform: translateY(-2px);
-      box-shadow: none;
+      box-shadow: 0 4px 20px rgba(0, 255, 204, 0.05);
     }
 
     .upgrade-info {
@@ -598,7 +598,7 @@
     .upgrade-dot {
       width: 10px;
       height: 10px;
-      border-radius: 0;
+      border-radius: 50%;
       background: #101a21;
       border: 1px solid #101a21;
       transition: all 0.3s ease;
@@ -607,27 +607,27 @@
     .upgrade-dot.active {
       background: #63d8d1;
       border-color: #63d8d1;
-      box-shadow: none;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.8), 0 0 16px rgba(0, 255, 204, 0.3);
     }
 
     .btn-upgrade {
       background: #63d8d1;
       color: #101a21;
       border: none;
-      border-radius: 0;
+      border-radius: 6px;
       padding: 8px 16px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.3s ease;
-      box-shadow: none;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.2);
       white-space: nowrap;
     }
 
     .btn-upgrade:hover:not(:disabled) {
       background: #63d8d1;
-      box-shadow: none;
+      box-shadow: 0 0 16px rgba(0, 255, 204, 0.5);
       transform: translateY(-1px);
     }
 
@@ -650,13 +650,13 @@
     .backpack-item {
       background: rgba(18, 18, 36, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 0;
+      border-radius: 8px;
       padding: 6px 4px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      backdrop-filter: none;
+      backdrop-filter: blur(12px);
       gap: 4px;
       transition: all 0.3s ease;
       text-align: center;
@@ -676,7 +676,7 @@
       border-color: rgba(255, 255, 255, 0.2);
       background: rgba(18, 18, 36, 0.7);
       transform: translateY(-2px);
-      box-shadow: none;
+      box-shadow: 0 4px 20px rgba(255, 255, 255, 0.05);
     }
 
     .item-info {
@@ -688,7 +688,7 @@
 
     .item-emoji {
       font-size: 20px;
-      filter: none;
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
     }
 
     .item-details {
@@ -724,7 +724,7 @@
       background: transparent;
       border: 1px solid #63d8d1;
       color: #63d8d1;
-      border-radius: 0;
+      border-radius: 4px;
       padding: 3px 2px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 8px;
@@ -736,7 +736,7 @@
     .btn-sell:hover:not(:disabled) {
       background: #63d8d1;
       color: #101a21;
-      box-shadow: none;
+      box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
     }
 
     .btn-sell:disabled {
@@ -749,12 +749,12 @@
     .device-card {
       background: rgba(18, 18, 36, 0.6);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 0;
+      border-radius: 12px;
       padding: 14px;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      backdrop-filter: none;
+      backdrop-filter: blur(12px);
       transition: all 0.3s ease;
     }
 
@@ -764,7 +764,7 @@
 
     .device-card-active {
       border-color: rgba(99,216,209, 0.4);
-      box-shadow: none;
+      box-shadow: 0 0 20px rgba(0, 255, 204, 0.06);
     }
 
     .device-header {
@@ -782,7 +782,7 @@
     .device-led {
       width: 8px;
       height: 8px;
-      border-radius: 0;
+      border-radius: 50%;
       flex-shrink: 0;
     }
 
@@ -798,7 +798,7 @@
       color: #63d8d1;
       font-size: 8px;
       padding: 2px 6px;
-      border-radius: 0;
+      border-radius: 4px;
     }
 
     .device-status {
@@ -832,7 +832,7 @@
     .device-inv-item {
       background: rgba(99,216,209, 0.08);
       border: 1px solid rgba(99,216,209, 0.15);
-      border-radius: 0;
+      border-radius: 4px;
       padding: 2px 6px;
       font-size: 9px;
       color: #63d8d1;
@@ -849,7 +849,7 @@
       background: transparent;
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: #93a7a1;
-      border-radius: 0;
+      border-radius: 6px;
       padding: 6px 4px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 9px;
@@ -880,13 +880,13 @@
     .guide-section {
       background: rgba(18, 18, 36, 0.6);
       border: 1px solid rgba(99,216,209, 0.2);
-      border-radius: 0;
+      border-radius: 12px;
       padding: 20px;
-      backdrop-filter: none;
+      backdrop-filter: blur(12px);
       font-size: 12px;
       line-height: 1.6;
       color: #edf0d4;
-      box-shadow: none;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
 
     .guide-section h4 {
@@ -897,7 +897,7 @@
       border-bottom: 1px solid rgba(99,216,209, 0.2);
       padding-bottom: 6px;
       letter-spacing: 1px;
-      text-shadow: 0 0 8px rgba(99,216,209, 0.2);
+      text-shadow: 0 0 8px rgba(99, 216, 209, 0.2);
     }
 
     .guide-section p {
@@ -916,7 +916,7 @@
     .api-card {
       background: rgba(18, 18, 36, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 0;
+      border-radius: 10px;
       padding: 14px;
       margin-bottom: 12px;
       display: flex;
@@ -941,7 +941,7 @@
       font-weight: 700;
       color: #63d8d1;
       font-size: 12px;
-      text-shadow: 0 0 6px rgba(99,216,209, 0.2);
+      text-shadow: 0 0 6px rgba(0, 255, 204, 0.2);
     }
 
     .api-desc {
@@ -952,7 +952,7 @@
     .api-code-block {
       background: rgba(10, 10, 20, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 0;
+      border-radius: 6px;
       padding: 8px 12px;
       font-size: 11px;
       color: #9b794e;
@@ -968,7 +968,7 @@
       background: #101a21;
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: #93a7a1;
-      border-radius: 0;
+      border-radius: 4px;
       padding: 4px 8px;
       font-size: 10px;
       cursor: pointer;
@@ -981,14 +981,14 @@
       background: #9b794e;
       border-color: #9b794e;
       color: #edf0d4;
-      box-shadow: none;
+      box-shadow: 0 0 10px rgba(99, 216, 209, 0.4);
     }
 
     .btn-copy.copied {
       background: #63d8d1;
       border-color: #63d8d1;
       color: #101a21;
-      box-shadow: none;
+      box-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
     }
 
     /* Responsive */
@@ -1015,7 +1015,7 @@
     /* Drag & Drop Script Cards Styles */
     .script-card-item:hover {
       border-color: rgba(255, 255, 255, 0.4) !important;
-      box-shadow: none;
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
       transform: translateY(-1px);
     }
     .script-card-item.dragging {
@@ -1031,10 +1031,10 @@
       border-color: #63d8d1 !important;
       background: rgba(99,216,209, 0.08) !important;
       color: #63d8d1 !important;
-      box-shadow: none;
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.15);
     }
     .btn-card-unassign:hover {
-      text-shadow: 0 0 6px #9b794e;
+      text-shadow: 0 0 6px #ff4444;
       transform: scale(1.05);
     }
 
@@ -1389,41 +1389,29 @@
   <div id="game-container">
     <div id="rpg-chrome">
       <div class="game-hud"><span class="hud-kicker">DRONEHARVEST</span><strong id="workspace-zone">Kebun Perintis</strong><div class="hud-resources"><span class="pixel-icon" style="--icon-index:1" aria-hidden="true"></span><span id="workspace-wallet">100g</span><span class="hud-divider">/</span><span id="workspace-fleet">0/1 drone aktif</span></div></div>
-      <nav class="world-actions" aria-label="Menu permainan"><button id="btn-workspace-backpack">Tas <kbd>B</kbd></button><button id="btn-journal">Jurnal</button><button id="btn-toggle-editor">Menu <kbd>F2</kbd></button></nav>
+      <nav class="world-actions" aria-label="Menu permainan"><button id="btn-workspace-backpack">Tas <kbd>B</kbd></button><button id="btn-journal">Jurnal</button><button id="btn-workspace-phone">Ponsel</button><button id="btn-toggle-editor" aria-controls="editor-panel" aria-expanded="true">[ CODE ]</button></nav>
       <div class="world-help">WASD bergerak · E interaksi · 1–8 alat</div>
     </div>
     <div id="game-toast" role="status"></div>
   </div>
 
   <!-- Code Editor Panel -->
-  <div id="editor-panel" class="collapsed" aria-labelledby="panel-title">
+  <aside id="editor-panel" aria-labelledby="panel-title">
     <div id="editor-header">
-      <h3 id="panel-title">Menu perjalanan</h3>
-      <button data-close-panel aria-label="Tutup menu">Tutup ×</button>
+      <h3 id="panel-title">🤖 DRONE CODE</h3>
+      <span class="editor-toggle-hint">Tab to toggle</span>
     </div>
 
     <!-- Panel Tabs selector -->
-    <div id="panel-tabs" class="panel-directory">
-      <button class="panel-tab" data-tab="menu">Menu</button><button class="panel-tab" data-tab="operations">Jurnal</button>
-      <button class="panel-tab" data-tab="editor">Kode lanjutan</button>
-      <button class="panel-tab" data-tab="devices">Drone</button>
-      <button class="panel-tab" data-tab="profile">Profil</button>
-      <button class="panel-tab" data-tab="guide">Panduan</button>
+    <div id="panel-tabs">
+      <button class="panel-tab active" data-tab="editor">💻 Editor</button>
+      <button class="panel-tab" data-tab="profile">🧑‍🚀 Profile</button>
+      <button class="panel-tab" data-tab="guide">📖 Academy</button>
+      <button class="panel-tab" data-tab="devices">🤖 Devices</button>
     </div>
 
     <!-- View 1: Monaco Editor View -->
-    <div id="tab-view-menu" class="tab-view menu-view">
-      <p class="eyebrow">CATATAN PENJELAJAH</p><h1>Perjalanan dimulai<br>dari satu petak.</h1><p>Jelajahi zona, rawat kebun, dan kembangkan mesinmu.</p>
-      <div class="menu-destinations"><button class="panel-tab" data-tab="devices">Armada drone <span>Modul, persediaan, dan tugas</span></button><button class="panel-tab" data-tab="profile">Profil penjelajah <span>Perkembangan dan peningkatan</span></button><button class="panel-tab" data-tab="guide">Panduan <span>Belajar alat dan produksi</span></button><button id="btn-workspace-phone">Ponsel <span>Pesan dan toko jarak jauh</span></button><button class="panel-tab" data-tab="editor">Kode lanjutan <span>Kontrol skrip drone</span></button></div>
-    </div>
-    <div id="tab-view-operations" class="tab-view operations-view" style="display:none">
-      <div class="operations-intro"><span class="eyebrow">Pusat kendali</span><h1>Jurnal produksi</h1><p>Pilih pesanan. Atur pasokan. Tumbuhkan hasil.</p></div>
-      <div class="operations-career"><div><strong id="operations-rank">Perintis</strong><span id="operations-completed">0 kontrak selesai</span></div><span class="career-icon" aria-hidden="true"></span></div>
-      <label class="operations-reserve-label" for="operations-reserve">Cadangan modal <select id="operations-reserve"><option value="0">0g</option><option value="50" selected>50g</option><option value="100">100g</option><option value="250">250g</option><option value="500">500g</option></select></label>
-      <div id="operations-content"></div>
-      <details class="operations-rates"><summary>Prakiraan produksi drone</summary><p class="operations-note">Estimasi benchmark skrip, bukan pengukuran hasil aktual.</p><div id="production-dashboard"><div id="production-dashboard-rates">Belum ada estimasi produksi.</div></div></details>
-    </div>
-    <div id="tab-view-editor" class="tab-view" style="display: none;">
+    <div id="tab-view-editor" class="tab-view">
       <!-- Script Tabs -->
       <div id="script-tabs">
         <button id="btn-new-script">+ New</button>
@@ -1974,9 +1962,20 @@ if (needsTransport) {
 
       </div>
     </div>
-      </div>
+  </aside>
 
-      <!-- Floating Tooltip -->
+  <section id="journal-panel" aria-labelledby="journal-title">
+    <header class="rpg-panel-header"><h2 id="journal-title">Jurnal produksi</h2><button data-close-panel>Tutup ×</button></header>
+    <div class="operations-view tab-view">
+      <div class="operations-intro"><span class="eyebrow">Pusat kendali</span><h1>Jurnal produksi</h1><p>Pilih pesanan. Atur pasokan. Tumbuhkan hasil.</p></div>
+      <div class="operations-career"><div><strong id="operations-rank">Perintis</strong><span id="operations-completed">0 kontrak selesai</span></div><span class="career-icon" aria-hidden="true"></span></div>
+      <label class="operations-reserve-label" for="operations-reserve">Cadangan modal <select id="operations-reserve"><option value="0">0g</option><option value="50" selected>50g</option><option value="100">100g</option><option value="250">250g</option><option value="500">500g</option></select></label>
+      <div id="operations-content"></div>
+      <details class="operations-rates"><summary>Prakiraan produksi drone</summary><p class="operations-note">Estimasi benchmark skrip, bukan pengukuran hasil aktual.</p><div id="production-dashboard"><div id="production-dashboard-rates">Belum ada estimasi produksi.</div></div></details>
+    </div>
+  </section>
+
+  <!-- Floating Tooltip -->
   <div id="inventory-tooltip"></div>
 
   <!-- Smartphone Overlay (Q) -->

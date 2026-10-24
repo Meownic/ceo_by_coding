@@ -69,7 +69,7 @@ export class EditorBridge {
     this.consoleManager = consoleManager;
     this.deviceManager = deviceManager || null;
     this.editor = null;
-    this.isEditorVisible = false;
+    this.isEditorVisible = true;
 
     this.isPhoneOpen = false;
     this.activePhoneApp = 'home';
@@ -77,7 +77,7 @@ export class EditorBridge {
     this.isWarehouseOpen = false;
 
     const panels = scene.panelManager;
-    panels.register('editor-panel', () => { this.isEditorVisible = false; });
+    panels.register('journal-panel');
     panels.register('backpack-popup', () => { this.isBackpackOpen = false; });
     panels.register('warehouse-popup', () => { this.isWarehouseOpen = false; });
     panels.register('smartphone-chat', () => { this.isPhoneOpen = false; });
@@ -159,15 +159,23 @@ export class EditorBridge {
     this._registerDroneCompletions();
 
     // Save on change (debounced)
-    let saveTimeout;
     this.editor.onDidChangeModelContent(() => {
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        const activeScript = this.scriptManager.getActiveScript();
-        if (activeScript) {
-          this.scriptManager.updateCode(activeScript.id, this.editor.getValue());
-        }
-      }, 500);
+      if (this._loadingEditorContent) return;
+      clearTimeout(this._saveCodeTimeout);
+      const activeScript = this.scriptManager.getActiveScript();
+      if (!activeScript) return;
+      const { id } = activeScript;
+      const code = this.editor.getValue();
+      this._saveCodeTimeout = setTimeout(() => this.scriptManager.updateCode(id, code), 500);
+    });
+    this._onPageHide = () => this._syncMonacoActiveScriptCode();
+    window.addEventListener('beforeunload', this._onPageHide);
+    window.addEventListener('pagehide', this._onPageHide);
+    this.scene.events.once('shutdown', () => {
+      this._syncMonacoActiveScriptCode();
+      window.removeEventListener('beforeunload', this._onPageHide);
+      window.removeEventListener('pagehide', this._onPageHide);
+      this.editor.dispose();
     });
   }
 
@@ -341,11 +349,7 @@ export class EditorBridge {
       tab.innerHTML = `<span class="color-dot" style="background:${script.color}"></span>${script.name}`;
 
       tab.addEventListener('click', () => {
-        this.scriptManager.setActiveScript(script.id);
-        if (this.editor) {
-          this.editor.setValue(script.code);
-        }
-        this._renderTabs();
+        this._selectScript(script.id);
       });
 
       tabContainer.appendChild(tab);
@@ -357,13 +361,10 @@ export class EditorBridge {
     newButton.textContent = '+ New';
     newButton.addEventListener('click', () => {
       if (this.scriptManager.canCreateScript()) {
+        this._syncMonacoActiveScriptCode();
         const script = this.scriptManager.createScript();
         if (script) {
-          this.scriptManager.setActiveScript(script.id);
-          if (this.editor) {
-            this.editor.setValue(script.code);
-          }
-          this._renderTabs();
+          this._selectScript(script.id);
         }
       } else {
         const { current, max } = this.scriptManager.getSlotCount();
@@ -464,22 +465,43 @@ export class EditorBridge {
   }
 
   openTab(name) {
-    document.querySelector('.panel-tab[data-tab="' + name + '"]')?.click();
+    document.querySelector('#panel-tabs .panel-tab[data-tab="' + name + '"]')?.click();
+  }
+
+  toggleEditor(forceState = !this.isEditorVisible) {
+    this._syncMonacoActiveScriptCode();
+    this.isEditorVisible = forceState;
+    const panel = document.getElementById('editor-panel');
+    panel.classList.toggle('collapsed', !forceState);
+    panel.inert = !forceState;
+    const toggle = document.getElementById('btn-toggle-editor');
+    toggle.textContent = forceState ? '[ CODE ]' : '[ < ]';
+    toggle.setAttribute('aria-expanded', String(forceState));
+    if (!forceState && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+    if (forceState) requestAnimationFrame(() => this.editor?.layout());
   }
 
   _setupToggle() {
-    document.getElementById('btn-toggle-editor').addEventListener('click', () => {
-      if (this.scene.panelManager.current === 'editor-panel') this.scene.panelManager.close();
-      else this.openTab('menu');
-    });
-    document.getElementById('btn-journal').addEventListener('click', () => this.openTab('operations'));
+    const toggle = document.getElementById('btn-toggle-editor');
+    this._onToggle = () => this.toggleEditor();
+    toggle.addEventListener('click', this._onToggle);
+    const journal = document.getElementById('btn-journal');
+    this._onJournal = () => this.scene.panelManager.open('journal-panel', journal);
+    journal.addEventListener('click', this._onJournal);
     this._onPanelShortcut = e => {
-      if (e.key === 'F2' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
-        e.preventDefault(); document.getElementById('btn-toggle-editor').click();
-      }
+      if (e.key !== 'Tab' || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || this.scene.isModalOpen) return;
+      const active = document.activeElement;
+      if (active?.matches('input, textarea, select') || active?.isContentEditable ||
+          document.getElementById('monaco-container')?.contains(active)) return;
+      e.preventDefault();
+      this.toggleEditor();
     };
     document.addEventListener('keydown', this._onPanelShortcut);
-    this.scene.events.once('shutdown', () => document.removeEventListener('keydown', this._onPanelShortcut));
+    this.scene.events.once('shutdown', () => {
+      document.removeEventListener('keydown', this._onPanelShortcut);
+      toggle.removeEventListener('click', this._onToggle);
+      journal.removeEventListener('click', this._onJournal);
+    });
   }
 
   /** Setup sandbox callbacks */
@@ -571,21 +593,34 @@ export class EditorBridge {
   /** Update editor content from external source */
   setEditorContent(code) {
     if (this.editor) {
-      this.editor.setValue(code);
+      clearTimeout(this._saveCodeTimeout);
+      this._loadingEditorContent = true;
+      try {
+        this.editor.setValue(code);
+      } finally {
+        this._loadingEditorContent = false;
+      }
     }
+  }
+
+  /** Persist the current buffer before loading another script. */
+  _selectScript(id) {
+    this._syncMonacoActiveScriptCode();
+    this.scriptManager.setActiveScript(id);
+    this.scriptManager.saveToLocalStorage();
+    this.setEditorContent(this._getActiveCode());
+    this._renderTabs();
   }
 
   /** Setup panel tabs navigation and event bindings */
   _setupPanelTabs() {
-    const tabs = document.querySelectorAll('.panel-tab');
-    const tabViews = document.querySelectorAll('.tab-view');
+    const tabs = document.querySelectorAll('#panel-tabs .panel-tab');
+    const tabViews = document.querySelectorAll('#editor-panel > .tab-view');
 
     tabs.forEach((tab) => {
       tab.addEventListener('click', () => {
         const targetTab = tab.getAttribute('data-tab');
-        this.scene.panelManager.open('editor-panel', tab.closest('#editor-panel') ? undefined : tab);
-        this.isEditorVisible = true;
-        document.getElementById('panel-title').textContent = ({menu:'Menu perjalanan',operations:'Jurnal produksi',editor:'Kode lanjutan',devices:'Armada drone',profile:'Profil penjelajah',guide:'Panduan'})[targetTab] || 'Menu';
+        this.toggleEditor(true);
 
         // Toggle active button
         tabs.forEach((t) => t.classList.toggle('active', t === tab));
@@ -598,7 +633,7 @@ export class EditorBridge {
 
         // Trigger Monaco layout update or tab refresh if visible
         if (targetTab === 'editor' && this.editor) {
-          this.editor.layout();
+          requestAnimationFrame(() => this.editor?.layout());
         } else if (targetTab === 'devices') {
           this._renderDevicesTab();
         } else if (targetTab === 'profile') {
@@ -900,6 +935,7 @@ export class EditorBridge {
   /** Render the Devices tab with all drone cards */
   /** Helper to sync active code from Monaco editor to the active script card */
   _syncMonacoActiveScriptCode() {
+    clearTimeout(this._saveCodeTimeout);
     if (this.editor) {
       const activeScript = this.scriptManager.getActiveScript();
       if (activeScript) {
@@ -1031,13 +1067,13 @@ export class EditorBridge {
           }
           const success = this.scene.saveSystem.applySaveData(saveData);
           if (success) {
-            this._syncMonacoActiveScriptCode();
+            clearTimeout(this._saveCodeTimeout);
             this._renderTabs();
             this._renderDevicesTab();
             this._renderProfile();
             this._renderBackpack();
             if (this.editor) {
-              this.editor.setValue(this._getActiveCode());
+              this.setEditorContent(this._getActiveCode());
             }
             this.consoleManager.addLine('✓ Cloud save restored successfully!', 'info');
           } else {
@@ -1319,15 +1355,13 @@ export class EditorBridge {
         const scriptId = e.dataTransfer.getData('text/plain');
         const droneId = zone.getAttribute('data-drone-id');
         if (scriptId && droneId) {
+          this._syncMonacoActiveScriptCode();
           this.scriptManager.assignScriptToDrone(scriptId, droneId);
           this.consoleManager.addLine(` Script card linked to ${droneId}`, 'info');
           this._renderDevicesTab();
           
           if (this.deviceManager?.activeDeviceId === droneId) {
-            const script = this.scriptManager.getScript(scriptId);
-            if (script && this.editor) {
-              this.editor.setValue(script.code);
-            }
+            this._selectScript(scriptId);
           }
         }
       });
@@ -1352,16 +1386,12 @@ export class EditorBridge {
         e.stopPropagation();
         const scriptId = btn.getAttribute('data-script-id');
         if (scriptId) {
-          this.scriptManager.setActiveScript(scriptId);
+          this._selectScript(scriptId);
           const script = this.scriptManager.getScript(scriptId);
           if (script && script.assignedDroneId) {
             this.deviceManager.setActiveDevice(script.assignedDroneId);
           }
-          if (this.editor && script) {
-            this.editor.setValue(script.code);
-          }
-          this._renderTabs();
-          document.querySelector('.panel-tab[data-tab="editor"]')?.click();
+          this.openTab('editor');
           this.consoleManager.addLine(` Editing script: ${script?.name || scriptId}`, 'info');
         }
       });
@@ -1375,12 +1405,13 @@ export class EditorBridge {
         if (scriptId) {
           const script = this.scriptManager.getScript(scriptId);
           if (confirm(`Delete script "${script?.name || 'Untitled'}"?`)) {
+            this._syncMonacoActiveScriptCode();
             this.scriptManager.deleteScript(scriptId);
             this.consoleManager.addLine(` Script card "${script?.name}" deleted.`, 'info');
             this._renderDevicesTab();
             this._renderTabs();
             if (this.editor) {
-              this.editor.setValue(this._getActiveCode());
+              this.setEditorContent(this._getActiveCode());
             }
           }
         }
