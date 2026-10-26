@@ -2126,6 +2126,14 @@ export class EditorBridge {
   }
 
   toggleWarehouse(forceState = null) {
+    // Warehouse now lives in the right-side storage dock so it can support
+    // direct pointer drag/drop between the backpack and shared inventory.
+    if (this.scene.storageUI) {
+      const shouldOpen = forceState === null ? !this.scene.storageUI.isOpen() : forceState;
+      if (shouldOpen) this.scene.storageUI.open();
+      else this.scene.storageUI.close();
+      return;
+    }
     const whEl = document.getElementById('warehouse-popup');
     if (!whEl) return;
 

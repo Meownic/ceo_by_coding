@@ -222,11 +222,19 @@ export default class Drone extends Phaser.GameObjects.Sprite {
       resolution: 1,
     }).setOrigin(0.5, 0).setDepth(16);
 
+    // ── Inventory capacity bar (yellow → red as it fills) ────────
+    this.inventoryBarBg = scene.add.rectangle(px, py + 31, 26, 5, 0x101a21)
+      .setStrokeStyle(1, 0x42535b).setDepth(16);
+    this.inventoryBar = scene.add.rectangle(px - 11, py + 31, 1, 3, 0xe9bf62)
+      .setOrigin(0, 0.5).setDepth(17);
+
     // ── Idle bobbing animation ───────────────────────────────────
     this._startBobbing();
 
     // ── Event emitter for inventory changes ──────────────────────
     this.events = new Phaser.Events.EventEmitter();
+    this._inventorySignature = '';
+    this._updateInventoryBar();
   }
 
   /* ================================================================
@@ -255,6 +263,7 @@ export default class Drone extends Phaser.GameObjects.Sprite {
     }
     this.module = moduleType;
     this.droneInventory.capacity = this.getInventoryCapacity();
+    this._updateInventoryBar();
     this.events.emit('module-changed', { module: moduleType, droneId: this.id });
     return { success: true, message: moduleType ? `Equipped ${MODULE_TYPES[moduleType].name}` : 'Module unequipped' };
   }
@@ -448,6 +457,34 @@ export default class Drone extends Phaser.GameObjects.Sprite {
     }
   }
 
+  /** Keep the compact capacity meter accurate even when scripts move items. */
+  _updateInventoryBar() {
+    const total = this.droneInventory?.getTotalCount?.() || 0;
+    const capacity = Math.max(1, this.getInventoryCapacity());
+    const ratio = Phaser.Math.Clamp(total / capacity, 0, 1);
+    const yellow = { r: 0xe9, g: 0xbf, b: 0x62 };
+    const red = { r: 0xd9, g: 0x5f, b: 0x54 };
+    const r = Math.round(yellow.r + (red.r - yellow.r) * ratio);
+    const g = Math.round(yellow.g + (red.g - yellow.g) * ratio);
+    const b = Math.round(yellow.b + (red.b - yellow.b) * ratio);
+    const color = (r << 16) | (g << 8) | b;
+    const width = Math.max(1, Math.round(22 * ratio));
+
+    this.inventoryBar?.setVisible(total > 0).setSize(width, 3).setFillStyle(color);
+    this.inventoryBarBg?.setPosition(this.x, this.y + 31);
+    this.inventoryBar?.setPosition(this.x - 11, this.y + 31);
+
+    const signature = `${total}/${capacity}`;
+    if (signature !== this._inventorySignature) {
+      this._inventorySignature = signature;
+      this.events?.emit('inventory-changed', { droneId: this.id, total, capacity });
+    }
+  }
+
+  update() {
+    this._updateInventoryBar();
+  }
+
   /**
    * Keep shadow, LED, and label in sync with the sprite position.
    * @private
@@ -462,6 +499,8 @@ export default class Drone extends Phaser.GameObjects.Sprite {
     if (this.idLabel) {
       this.idLabel.setPosition(this.x, this.y + 18);
     }
+    if (this.inventoryBarBg) this.inventoryBarBg.setPosition(this.x, this.y + 31);
+    if (this.inventoryBar) this.inventoryBar.setPosition(this.x - 11, this.y + 31);
     if (this.speechBubble) {
       this.speechBubble.setPosition(this.x, this.y);
     }
@@ -602,6 +641,8 @@ export default class Drone extends Phaser.GameObjects.Sprite {
     if (this.shadow) this.shadow.destroy();
     if (this.statusIndicator) this.statusIndicator.destroy();
     if (this.idLabel) this.idLabel.destroy();
+    if (this.inventoryBarBg) this.inventoryBarBg.destroy();
+    if (this.inventoryBar) this.inventoryBar.destroy();
     if (this.speechBubble) this.speechBubble.destroy();
     super.destroy(fromScene);
   }

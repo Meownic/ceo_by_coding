@@ -18,7 +18,7 @@ export default class Warehouse {
    * @param {number} [w=2] – Width in tiles
    * @param {number} [h=2] – Height in tiles
    */
-  constructor(scene, tx, ty, w = 2, h = 2) {
+  constructor(scene, tx, ty, w = 2, h = 2, storage = null, label = 'GUDANG') {
     /** @type {Phaser.Scene} */
     this.scene = scene;
 
@@ -31,11 +31,14 @@ export default class Warehouse {
     /** @type {number} Height in tiles */
     this.tileH = h;
 
-    /** @type {Map<string, number>} Stored items */
-    this.items = new Map();
-
-    /** @type {Phaser.Events.EventEmitter} */
-    this.events = new Phaser.Events.EventEmitter();
+    /**
+     * HQ and crafted depots share the same storage object. Keeping the event
+     * emitter in that object makes every access point refresh consistently.
+     */
+    this.storage = storage || { items: new Map(), events: new Phaser.Events.EventEmitter() };
+    this.items = this.storage.items;
+    this.events = this.storage.events;
+    this.label = label;
 
     // ── Visual ──────────────────────────────────────────────────
     const cx = (tx + w / 2) * TILE_SIZE;
@@ -50,7 +53,7 @@ export default class Warehouse {
     this._icon = scene.add.image(cx, cy, 'warehouse').setDepth(3);
 
     // Label
-    this._label = scene.add.text(cx, cy + 12, 'GUDANG', {
+    this._label = scene.add.text(cx, cy + 12, label, {
       fontFamily: '"Courier New", monospace',
       fontSize: '8px',
       color: '#edf0d4',

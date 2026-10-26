@@ -44,6 +44,9 @@ function createDefaultTile(x, y) {
     isConveyor: false,
     conveyorDir: null,
     conveyorItem: 'none',
+    isBuilding: false,
+    buildingId: null,
+    buildingType: null,
   };
 }
 
@@ -190,6 +193,22 @@ export default class GridManager {
     }
   }
 
+  /** Mark a tile occupied by a non-machine player building such as a depot. */
+  setBuilding(x, y, buildingId, buildingType) {
+    const tile = this.getTile(x, y);
+    if (!tile) return;
+    tile.isBuilding = buildingId !== null;
+    tile.buildingId = buildingId;
+    tile.buildingType = buildingType;
+  }
+
+  /** True only for an empty, reachable interior tile. */
+  isBuildable(x, y) {
+    if (!this.inBounds(x, y) || x === 0 || y === 0 || x === this.cols - 1 || y === this.rows - 1) return false;
+    const tile = this.getTile(x, y);
+    return Boolean(tile && !tile.isGate && !tile.isOre && !tile.isMachine && !tile.isConveyor && !tile.isBuilding && !tile.hasPlant);
+  }
+
   /**
    * Determine if a tile is walkable by player or drones.
    * @param {number} x
@@ -222,6 +241,11 @@ export default class GridManager {
       if (y === 20) return !tile.isLocked; // Gate 4
       return false;
     }
+    // Zone 3 & 5 separator (horizontal line y=39, south gate at x=20)
+    if (y === 39 && x >= 0 && x < this.cols) {
+      if (x === 20) return !tile.isLocked; // Gate 5
+      return false;
+    }
 
     // 3. Check gate lock state
     if (tile.isGate && tile.isLocked) {
@@ -229,7 +253,7 @@ export default class GridManager {
     }
 
     // 4. Check ores & machines
-    if (tile.isMachine) {
+    if (tile.isMachine || tile.isBuilding) {
       return false;
     }
     if (tile.isOre) {
@@ -502,9 +526,11 @@ export default class GridManager {
 
       const targetTile = this.getTile(tx, ty);
 
-      // Warehouse deposit
-      if (scene && scene.warehouse && scene.warehouse.containsTile(tx, ty)) {
-        scene.warehouse.deposit(moveInfo.item, 1);
+      // Warehouse or crafted depot deposit (both use the shared warehouse stock).
+      const storage = scene?.buildingSystem?.getStorageAt(tx, ty)
+        || (scene?.warehouse?.containsTile(tx, ty) ? scene.warehouse : null);
+      if (storage) {
+        storage.deposit(moveInfo.item, 1);
         moveInfo.fromTile.conveyorItem = 'none';
         if (scene.updateTileSprite) scene.updateTileSprite(moveInfo.x, moveInfo.y);
         return;

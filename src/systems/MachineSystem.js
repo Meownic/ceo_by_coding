@@ -5,6 +5,20 @@
  */
 
 export const RECIPES = {
+  crafting_table: [
+    {
+      inputs: { copper_ingot: 1, iron_ingot: 1 },
+      output: { id: 'conveyor_kit', count: 1 },
+      timeMs: 5000,
+      name: 'Assemble Conveyor Kit',
+    },
+    {
+      inputs: { stone: 12, iron_ingot: 4 },
+      output: { id: 'warehouse_depot_kit', count: 1 },
+      timeMs: 12000,
+      name: 'Assemble Warehouse Depot Kit',
+    },
+  ],
   mill: {
     inputs: { wheat: 2 },
     output: { id: 'flour', count: 1 },

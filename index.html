@@ -1389,13 +1389,36 @@
   <div id="game-container">
     <div id="rpg-chrome">
       <div class="game-hud"><span class="hud-kicker">DRONEHARVEST</span><strong id="workspace-zone">Kebun Perintis</strong><div class="hud-resources"><span class="pixel-icon" style="--icon-index:1" aria-hidden="true"></span><span id="workspace-wallet">100g</span><span class="hud-divider">/</span><span id="workspace-fleet">0/1 drone aktif</span></div></div>
-      <nav class="world-actions" aria-label="Menu permainan"><button id="btn-workspace-backpack">Tas <kbd>B</kbd></button><button id="btn-journal">Jurnal</button><button id="btn-workspace-phone">Ponsel</button><button id="btn-toggle-editor" aria-controls="editor-panel" aria-expanded="true">[ CODE ]</button></nav>
-      <div class="world-help">WASD bergerak · E interaksi · 1–8 alat</div>
+      <nav class="world-actions" aria-label="Menu permainan"><button id="btn-workspace-backpack">Tas</button><button id="btn-build-mode" aria-controls="build-toolbar" aria-pressed="false">Build <kbd>B</kbd></button><button id="btn-journal">Jurnal</button><button id="btn-workspace-phone">Ponsel</button><button id="btn-toggle-editor" aria-controls="editor-panel" aria-expanded="true">[ CODE ]</button></nav>
+      <div id="build-toolbar" hidden aria-label="Pilih building kit"></div>
+      <div class="world-help">WASD bergerak · E interaksi · B bangun · 1–8 alat</div>
     </div>
     <div id="game-toast" role="status"></div>
   </div>
 
   <div id="editor-resize-handle" role="separator" aria-controls="editor-panel" aria-label="Ubah ukuran panel kode" aria-orientation="vertical" aria-valuemin="320" tabindex="0" title="Tarik untuk mengubah ukuran panel kode. Gunakan tombol panah saat fokus."></div>
+
+  <aside id="storage-panel" hidden aria-label="Warehouse Storage">
+    <header class="storage-header">
+      <div><span class="eyebrow">SHARED LOGISTICS</span><h2>Warehouse Storage</h2></div>
+      <button type="button" data-storage-close aria-label="Tutup warehouse">Tutup ×</button>
+    </header>
+    <p class="storage-rule">Depot yang kamu craft memakai stok yang sama dengan Warehouse HQ.</p>
+    <div class="storage-columns">
+      <section class="storage-container" data-storage-container="backpack" aria-labelledby="storage-backpack-title">
+        <div class="storage-section-header"><div><span class="eyebrow">PLAYER</span><h3 id="storage-backpack-title">Tas</h3></div><button type="button" data-storage-sort="backpack">Sort: Kategori</button></div>
+        <div class="storage-grid" role="list" aria-label="Isi tas"></div>
+      </section>
+      <section class="storage-container" data-storage-container="warehouse" aria-labelledby="storage-warehouse-title">
+        <div class="storage-section-header"><div><span class="eyebrow">SHARED</span><h3 id="storage-warehouse-title">Warehouse</h3></div><button type="button" data-storage-sort="warehouse">Sort: Kategori</button></div>
+        <div class="storage-grid" role="list" aria-label="Isi warehouse"></div>
+      </section>
+    </div>
+    <footer class="storage-footer">
+      <p data-storage-selection>Tarik stack untuk memindahkan. Shift + tarik memindahkan 1.</p>
+      <div><button type="button" data-storage-move="warehouse">Ke Warehouse →</button><button type="button" data-storage-move="backpack">← Ke Tas</button><button type="button" data-storage-split>Split…</button></div>
+    </footer>
+  </aside>
 
   <!-- Code Editor Panel -->
   <aside id="editor-panel" aria-labelledby="panel-title">
@@ -1636,7 +1659,7 @@ if (ore !== 'none' && ore !== 'depleted') {
       <!-- Tutorial Part 3: Supplier & Drone Logistics -->
       <div class="guide-section">
         <h4> 3. SUPPLIER DRONES & LOGISTICS</h4>
-        <p>Equip a <strong>Supplier Module</strong>  to transfer items between adjacent drones or automate refineries. Use <code>drone.supplyFrom(otherDroneId)</code> to pull items from an adjacent drone. Use <code>drone.checkFrontItem()</code> and <code>drone.pushItem(direction)</code> to manage sorting gates or conveyors.</p>
+        <p>Equip a <strong>Supplier Module</strong>  to transfer items between adjacent drones or automate refineries. Use <code>drone.supplyFrom(otherDroneId)</code> to pull items from an adjacent drone. Use <code>drone.depositToConveyor(item)</code>, <code>drone.checkFrontItem()</code>, and <code>drone.pushItem(direction)</code> to manage a conveyor line.</p>
         
         <div style="margin: 8px 0; font-size: 10px; color: #9b794e;"> LOGISTICS SNIPPET: Sorter gate logic router</div>
         <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
@@ -1658,7 +1681,7 @@ while (drone.hasPower()) {
       <!-- Tutorial Part 4: Seller Drones & NPC Orders -->
       <div class="guide-section">
         <h4> 4. SELLER DRONES & NPC BUYERS</h4>
-        <p>Equip a <strong>Seller Module</strong>  to buy seeds or sell inventory items autonomously using <code>drone.buy(crop, count)</code> and <code>drone.sell()</code>. You can also deliver orders to Special NPC Buyers who arrive at the dock (adjacent to X:17, Y:3) for <strong>2.0x value</strong> rewards!</p>
+        <p>Equip a <strong>Seller Module</strong>  to buy seeds or sell inventory items using <code>drone.buy(crop, count)</code> and <code>drone.sell()</code>. A seller must stand beside the Market before selling. You can also deliver orders to Special NPC Buyers who arrive at the dock (adjacent to X:17, Y:3) for <strong>2.0x value</strong> rewards!</p>
         
         <div style="margin: 8px 0; font-size: 10px; color: #9b794e;"> SELLING SNIPPET: Fulfill special guest NPC orders</div>
         <div class="api-code-block" style="flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px;">
@@ -1699,11 +1722,22 @@ if (needsTransport) {
       <!-- Tutorial Part 6: Centralized Warehouse System -->
       <div class="guide-section">
         <h4> 6. CENTRALIZED WAREHOUSE SYSTEM</h4>
-        <p>The centralized Warehouse (Zone 1, purple base structure at X:10, Y:2) offers infinite storage capacity.</p>
+        <p>The centralized Warehouse (Zone 1, purple base structure at X:10, Y:2) offers infinite storage capacity. Craft a Depot kit at a Crafting Table to add another access point to the same shared stock.</p>
         <ul>
           <li><strong>Autonomous Drones</strong>: Drones can deposit items directly into the Warehouse using <code>drone.transferToWarehouse()</code> when standing adjacent to the Warehouse.</li>
-          <li><strong>Manual Warehouse Panel</strong>: Press <code>[E]</code> standing near the Warehouse on the grid to automatically switch to the <strong>Devices</strong> tab in the Code panel. Scroll down to see the <strong>Warehouse Storage Grid</strong> to manually withdraw (Click for 1, Shift-Click for stack) or deposit your backpack inventory.</li>
+          <li><strong>Manual Warehouse Panel</strong>: Press <code>[E]</code> beside HQ or a Depot. The code sidebar becomes a two-column storage dock: drag a full stack, Shift + drag one item, or use Split to choose a quantity.</li>
+          <li><strong>Automated Pickup</strong>: Use <code>drone.transferFromWarehouse('wheat')</code> beside HQ or a Depot. It pulls that item until the drone is full or the stock runs out.</li>
         </ul>
+      </div>
+
+      <div class="guide-section">
+        <h4> 7. SELLER ROUTE: WAREHOUSE → MARKET</h4>
+        <p>A Seller/Buyer drone can fill its cargo at Warehouse, fly to the Market, then use <code>drone.sell()</code>. Selling only works beside the Market, so route the drone back to Warehouse to repeat the loop.</p>
+      </div>
+
+      <div class="guide-section">
+        <h4> 8. EXPLORE ZONE & PASSIVE FAUNA</h4>
+        <p>Open the south gate from the Mining Cave with 10 stone and 2 iron ingot. Wildlife is passive: it wanders and leaves Wild Fiber on the ground. A drone can read the tile with <code>drone.checkGround()</code> and collect it with <code>drone.collect()</code>.</p>
       </div>
 
       <!-- API Reference -->
@@ -1846,6 +1880,14 @@ if (needsTransport) {
 
         <div class="api-card">
           <div class="api-header">
+            <span class="api-signature">drone.depositToConveyor(item)</span>
+            <button class="btn-copy" data-snippet="drone.depositToConveyor('iron_ore');">Copy</button>
+          </div>
+          <div class="api-desc">Places one carried item on the empty conveyor directly in front of the drone.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
             <span class="api-signature">drone.getMachineState(id)</span>
             <button class="btn-copy" data-snippet="drone.getMachineState('mill_001')">Copy</button>
           </div>
@@ -1872,6 +1914,22 @@ if (needsTransport) {
 
         <div class="api-card">
           <div class="api-header">
+            <span class="api-signature">drone.checkGround()</span>
+            <button class="btn-copy" data-snippet="drone.checkGround()">Copy</button>
+          </div>
+          <div class="api-desc">Returns the explore-zone drop at the drone's current tile, or <code>'none'</code>.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.collect()</span>
+            <button class="btn-copy" data-snippet="drone.collect();">Copy</button>
+          </div>
+          <div class="api-desc">Collects the resource drop beneath the drone, if there is room in its inventory.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
             <span class="api-signature">drone.transferToPlayer()</span>
             <button class="btn-copy" data-snippet="drone.transferToPlayer();">Copy</button>
           </div>
@@ -1883,7 +1941,15 @@ if (needsTransport) {
             <span class="api-signature">drone.transferToWarehouse()</span>
             <button class="btn-copy" data-snippet="drone.transferToWarehouse();">Copy</button>
           </div>
-          <div class="api-desc">Deposits all drone items into Warehouse storage. Drone must stand adjacent to Warehouse.</div>
+          <div class="api-desc">Deposits all drone items into shared storage. Drone must stand adjacent to HQ Warehouse or a crafted Depot.</div>
+        </div>
+
+        <div class="api-card">
+          <div class="api-header">
+            <span class="api-signature">drone.transferFromWarehouse(item)</span>
+            <button class="btn-copy" data-snippet="drone.transferFromWarehouse('wheat');">Copy</button>
+          </div>
+          <div class="api-desc">Loads the selected item until the drone reaches capacity or Warehouse stock runs out. Drone must stand adjacent to HQ Warehouse or a crafted Depot.</div>
         </div>
 
         <div class="api-card">
@@ -1901,7 +1967,7 @@ if (needsTransport) {
             <span class="api-signature">drone.sell()</span>
             <button class="btn-copy" data-snippet="drone.sell();">Copy</button>
           </div>
-          <div class="api-desc">Sells all crops in drone inventory autonomously. Requires **Seller Module **.</div>
+          <div class="api-desc">Sells all sellable cargo beside the Market. Requires a Seller/Buyer Module.</div>
         </div>
 
         <div class="api-card">
