@@ -35,13 +35,31 @@ test('all shared item atlas frames match standalone icon textures', () => {
 test('pixel primitives reject subpixel coordinates and unapproved colors',()=>{
   const b=new PixelBitmap(32,32);assert.throws(()=>b.pixel(.5,1,PALETTE.ink));assert.throws(()=>b.pixel(1,1,'#ffffff'));
 });
-test('five responsive widths render integer source pixels and 44px hotbar targets',()=>{
-  for(const width of [320,390,768,1024,1440]){
+test('responsive viewports retain desktop sprite scale when the code sidebar reduces game width',()=>{
+  for(const width of [320,390,640,768,960,1024,1440]){
     const view=pixelViewport(width,900);
-    assert.equal(view.width%32,0);assert.equal(view.height%32,0);assert.ok(view.cssWidth<=width);assert.ok(view.cssHeight<=900);
-    assert.equal(view.cssWidth/view.width,width>=1024?2:1);
+    assert.equal(view.width%32,0);assert.equal(view.height%32,0);assert.ok(view.cssWidth>=width);assert.ok(view.cssHeight>=900);
+    assert.ok(view.cssWidth-width<64);assert.ok(view.cssHeight-900<64);
+    assert.equal(view.cssWidth/view.width,width>=640?2:1);
     const layout=hotbarLayout(view.width,view.height,view.zoom);assert.ok(layout.size*view.zoom>=44);
     for(const p of layout.positions){assert.ok(p.x>=0&&p.y>=0);assert.ok(p.x+layout.size<=view.width);assert.ok(p.y+layout.size<=view.height);}
     assert.equal(layout.columns,width===320?4:8);
   }
+  const sidebarOpen=pixelViewport(960,900);
+  assert.equal(sidebarOpen.zoom,2);
+  assert.equal(sidebarOpen.cssWidth,960);
+  assert.equal(sidebarOpen.left,0);
+});
+test('short desktop game areas remain at 2× and cover the container',()=>{
+  const view=pixelViewport(960,540);
+  assert.equal(view.zoom,2);
+  assert.ok(view.cssWidth>=960);assert.ok(view.cssHeight>=540);
+});
+test('hotbar stays above the clipped canvas edge in a short game area',()=>{
+  const view=pixelViewport(960,600);
+  const layout=hotbarLayout(view.width,view.height,view.zoom,view.safe.bottom);
+  const lastSlot=layout.positions.at(-1);
+  assert.ok(view.safe.bottom>0);
+  assert.ok(lastSlot.y+layout.size<=view.height-view.safe.bottom);
+  assert.ok(view.top+(lastSlot.y+layout.size)*view.zoom<=600);
 });

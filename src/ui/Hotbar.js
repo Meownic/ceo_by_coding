@@ -120,7 +120,8 @@ export default class Hotbar {
   /** Calculate slot index (0-7) at the specified local canvas coordinate, or -1 */
   layout() {
     const zoom=this.scene.registry.get('pixelZoom')||1;
-    this._layout=hotbarLayout(this.scene.scale.width,this.scene.scale.height,zoom);
+    const safeBottom=this.scene.registry.get('pixelViewport')?.safe?.bottom||0;
+    this._layout=hotbarLayout(this.scene.scale.width,this.scene.scale.height,zoom,safeBottom);
     const size=this._layout.size;
     this._layout.positions.forEach((p,i)=>{
       const cx=p.x+size/2,cy=p.y+size/2;

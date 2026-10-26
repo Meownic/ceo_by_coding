@@ -86,6 +86,7 @@ export class EditorBridge {
     this._setupTabUI();
     this._setupControls();
     this._setupToggle();
+    this._setupResizablePanel();
     this._setupSandboxCallbacks();
     this._setupCloudSyncUI();
     this._setupSmartphoneUI();
@@ -472,13 +473,136 @@ export class EditorBridge {
     this._syncMonacoActiveScriptCode();
     this.isEditorVisible = forceState;
     const panel = document.getElementById('editor-panel');
+    const resizeHandle = document.getElementById('editor-resize-handle');
     panel.classList.toggle('collapsed', !forceState);
     panel.inert = !forceState;
+    resizeHandle?.classList.toggle('is-hidden', !forceState);
     const toggle = document.getElementById('btn-toggle-editor');
     toggle.textContent = forceState ? '[ CODE ]' : '[ < ]';
     toggle.setAttribute('aria-expanded', String(forceState));
     if (!forceState && panel.contains(document.activeElement)) toggle.focus({ preventScroll: true });
     if (forceState) requestAnimationFrame(() => this.editor?.layout());
+  }
+
+  /** Make the code sidebar wide enough for Monaco suggestions without hiding the game. */
+  _setupResizablePanel() {
+    const panel = document.getElementById('editor-panel');
+    const handle = document.getElementById('editor-resize-handle');
+    if (!panel || !handle) return;
+
+    const storageKey = 'ceoByCode_editorPanelSizes';
+    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+    const defaultSize = () => isMobile()
+      ? Math.round(window.innerHeight * 0.4)
+      : Math.round(window.innerWidth * 0.25);
+    const bounds = () => {
+      const protectedGameSpace = isMobile() ? 180 : 320;
+      const minimum = isMobile() ? 220 : 320;
+      const maximum = Math.max(minimum, (isMobile() ? window.innerHeight : window.innerWidth) - protectedGameSpace);
+      return { minimum: Math.min(minimum, maximum), maximum };
+    };
+    const loadSizes = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey));
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch {
+        return {};
+      }
+    };
+    const saveSize = size => {
+      try {
+        const sizes = loadSizes();
+        sizes[isMobile() ? 'mobile' : 'desktop'] = size;
+        localStorage.setItem(storageKey, JSON.stringify(sizes));
+      } catch {
+        // Resizing is still useful when storage is unavailable.
+      }
+    };
+
+    this._applyEditorPanelSize = (requestedSize, { persist = false } = {}) => {
+      const { minimum, maximum } = bounds();
+      const size = Math.round(Math.min(maximum, Math.max(minimum, Number(requestedSize) || defaultSize())));
+      const mobile = isMobile();
+
+      if (mobile) {
+        panel.style.width = '';
+        panel.style.height = `${size}px`;
+        handle.setAttribute('aria-orientation', 'horizontal');
+      } else {
+        panel.style.height = '';
+        panel.style.width = `${size}px`;
+        handle.setAttribute('aria-orientation', 'vertical');
+      }
+
+      handle.setAttribute('aria-valuemin', String(minimum));
+      handle.setAttribute('aria-valuemax', String(maximum));
+      handle.setAttribute('aria-valuenow', String(size));
+      if (persist) saveSize(size);
+      requestAnimationFrame(() => this.editor?.layout());
+      return size;
+    };
+
+    const restoreSize = () => {
+      const saved = loadSizes()[isMobile() ? 'mobile' : 'desktop'];
+      this._applyEditorPanelSize(saved ?? defaultSize());
+    };
+    const finishResize = event => {
+      if (this._resizePointerId === undefined || (event && event.pointerId !== this._resizePointerId)) return;
+      const size = Number(handle.getAttribute('aria-valuenow'));
+      this._resizePointerId = undefined;
+      handle.classList.remove('is-resizing');
+      document.body.classList.remove('is-resizing-editor');
+      saveSize(size);
+    };
+
+    this._onPanelResize = () => restoreSize();
+    this._onEditorResizeStart = event => {
+      if (event.button !== 0) return;
+      this._resizePointerId = event.pointerId;
+      handle.setPointerCapture?.(event.pointerId);
+      handle.classList.add('is-resizing');
+      document.body.classList.add('is-resizing-editor');
+      event.preventDefault();
+    };
+    this._onEditorResizeMove = event => {
+      if (event.pointerId !== this._resizePointerId) return;
+      const size = isMobile()
+        ? window.innerHeight - event.clientY - (handle.offsetHeight / 2)
+        : window.innerWidth - event.clientX - (handle.offsetWidth / 2);
+      this._applyEditorPanelSize(size);
+    };
+    this._onEditorResizeKeydown = event => {
+      const { minimum, maximum } = bounds();
+      const current = Number(handle.getAttribute('aria-valuenow')) || defaultSize();
+      const step = event.shiftKey ? 80 : 40;
+      let next = current;
+      if (event.key === 'Home') next = minimum;
+      else if (event.key === 'End') next = maximum;
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next += step;
+      else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next -= step;
+      else return;
+      event.preventDefault();
+      this._applyEditorPanelSize(next, { persist: true });
+    };
+    this._onEditorResizeReset = () => this._applyEditorPanelSize(defaultSize(), { persist: true });
+
+    restoreSize();
+    handle.addEventListener('pointerdown', this._onEditorResizeStart);
+    handle.addEventListener('pointermove', this._onEditorResizeMove);
+    handle.addEventListener('pointerup', finishResize);
+    handle.addEventListener('pointercancel', finishResize);
+    handle.addEventListener('keydown', this._onEditorResizeKeydown);
+    handle.addEventListener('dblclick', this._onEditorResizeReset);
+    window.addEventListener('resize', this._onPanelResize);
+    this.scene.events.once('shutdown', () => {
+      handle.removeEventListener('pointerdown', this._onEditorResizeStart);
+      handle.removeEventListener('pointermove', this._onEditorResizeMove);
+      handle.removeEventListener('pointerup', finishResize);
+      handle.removeEventListener('pointercancel', finishResize);
+      handle.removeEventListener('keydown', this._onEditorResizeKeydown);
+      handle.removeEventListener('dblclick', this._onEditorResizeReset);
+      window.removeEventListener('resize', this._onPanelResize);
+    });
   }
 
   _setupToggle() {

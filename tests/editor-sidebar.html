@@ -54,6 +54,15 @@
       assert(!scene.panelManager.panels.has('editor-panel'), 'Monaco tidak boleh didaftarkan sebagai modal.');
       pass('Sidebar awal dan empat tab lama');
 
+      const resizeHandle = doc.querySelector('#editor-resize-handle');
+      const editorPanel = doc.querySelector('#editor-panel');
+      assert(resizeHandle?.getAttribute('role') === 'separator', 'Pembatas resize tidak dapat diakses.');
+      const initialSize = Number(resizeHandle.getAttribute('aria-valuenow'));
+      resizeHandle.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      assert(Number(resizeHandle.getAttribute('aria-valuenow')) > initialSize, 'Tombol panah tidak memperlebar sidebar.');
+      assert(Number.parseFloat(editorPanel.style.width) > 0, 'Lebar panel tidak diterapkan.');
+      pass('Resize sidebar dengan keyboard');
+
       const first = scene.scriptManager.getActiveScript();
       bridge.editor.setValue('console.log("buffer pertama");');
       click('#btn-new-script');
@@ -115,7 +124,7 @@
       click('#journal-panel [data-close-panel]');
       assert(!scene.isModalOpen && bridge.isEditorVisible, 'Penutupan Jurnal mengunci sidebar.');
       pass('Jurnal tetap modal tersendiri');
-      output.textContent += 'LULUS: 9 pemeriksaan browser.\n';
+      output.textContent += 'LULUS: 10 pemeriksaan browser.\n';
     } catch (error) {
       output.textContent += `GAGAL: ${error.stack || error}\n`;
     } finally {
